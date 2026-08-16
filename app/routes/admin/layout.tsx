@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -50,7 +51,7 @@ export default function AdminLayout() {
               <div className="ml-auto">
                 <DropdownMenu>
                   <DropdownMenuTrigger>
-                    <button className="flex items-center gap-2 outline-none">
+                    <button className="flex cursor-pointer items-center gap-2 outline-none">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src="" alt="Admin" />
                         <AvatarFallback>AD</AvatarFallback>
@@ -58,12 +59,14 @@ export default function AdminLayout() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Admin User</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Settings</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>Log out</DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Admin User</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>Profile</DropdownMenuItem>
+                      <DropdownMenuItem>Settings</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>Log out</DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
