@@ -1,5 +1,5 @@
 import * as React from "react";
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Activity01Icon,
@@ -32,7 +32,19 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const data = {
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof DashboardSquare01Icon;
+  end?: boolean;
+};
+
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+const data: { navMain: NavGroup[] } = {
   navMain: [
     {
       title: "Overview",
@@ -139,24 +151,27 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const location = useLocation();
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip="DrPass Admin">
-              <NavLink to="/admin">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <HugeiconsIcon icon={Mortarboard01Icon} className="size-4" />
-                </div>
-
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">DrPass</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    Admin Console
-                  </span>
-                </div>
-              </NavLink>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="DrPass Admin"
+              render={<NavLink to="/admin" />}
+            >
+              <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <HugeiconsIcon icon={Mortarboard01Icon} className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">DrPass</span>
+                <span className="text-muted-foreground truncate text-xs">
+                  Admin Console
+                </span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -169,29 +184,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <NavLink
-                      to={item.url}
-                      end={item.end}
-                      className={({ isActive }) =>
-                        [
-                          "block w-full",
-                          isActive
-                            ? "[&>button]:bg-sidebar-accent [&>button]:text-sidebar-accent-foreground"
-                            : "",
-                        ].join(" ")
-                      }
-                    >
-                      <SidebarMenuButton tooltip={item.title}>
-                        <span>
-                          <HugeiconsIcon icon={item.icon} />
-                          <span>{item.title}</span>
-                        </span>
+                {group.items.map((item) => {
+                  const isActive = item.end
+                    ? location.pathname === item.url
+                    : location.pathname.startsWith(item.url);
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        tooltip={item.title}
+                        isActive={isActive}
+                        render={<NavLink to={item.url} end={item.end} />}
+                      >
+                        <HugeiconsIcon icon={item.icon} />
+                        <span>{item.title}</span>
                       </SidebarMenuButton>
-                    </NavLink>
-                  </SidebarMenuItem>
-                ))}
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
