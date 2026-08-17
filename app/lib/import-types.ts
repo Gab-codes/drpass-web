@@ -16,9 +16,12 @@ export interface ParsedQuestion {
   /** Stable client-side ID assigned during parsing (not a database ID). */
   _clientId: string;
   rowIndex: number;
+  questionNumber?: number;
   year: number | null;
   subject: string;
   text: string;
+  /** Original unparsed text, for traceability */
+  rawText?: string;
   options: ParsedOption[];
   answer: AnswerOption | null;
   status: QuestionStatus;
@@ -40,6 +43,7 @@ export interface ParseSummary {
   warningCount: number;
   errorCount: number;
   duplicateCount: number;
+  contextRowCount: number;
 }
 
 export type ImportFormat = "xlsx" | "json";

@@ -17,8 +17,9 @@ export const STATUS_CONFIG: Record<QuestionStatus, StatusConfig> = {
   valid: {
     label: "Valid",
     badgeClass:
-      "bg-muted text-muted-foreground border-border",
-    alertClass: "border-border bg-muted/50",
+      "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900",
+    alertClass:
+      "border-green-400 bg-green-100 dark:border-green-900 dark:bg-green-950/20",
   },
   warning: {
     label: "Warning",
@@ -47,7 +48,7 @@ export function statusBadgeClass(status: QuestionStatus, extra?: string) {
   return cn(
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
     STATUS_CONFIG[status].badgeClass,
-    extra
+    extra,
   );
 }
 

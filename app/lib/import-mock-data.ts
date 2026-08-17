@@ -258,6 +258,7 @@ export const MOCK_SUMMARY: ParseSummary = {
   warningCount: 1,
   errorCount: 2,
   duplicateCount: 2,
+  contextRowCount: 0,
 };
 
 export const MOCK_IMPORT_RECORDS: ImportRecord[] = [

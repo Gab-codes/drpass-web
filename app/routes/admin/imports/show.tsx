@@ -180,6 +180,7 @@ export default function ShowImport() {
           warningCount: record.warningCount,
           errorCount: record.errorCount,
           duplicateCount: record.duplicateCount,
+          contextRowCount: 0,
         }}
       />
 

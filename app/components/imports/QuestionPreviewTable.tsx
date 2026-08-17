@@ -42,7 +42,9 @@ export function QuestionPreviewTable({
   if (questions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium">No questions match the current filters</p>
+        <p className="text-sm font-medium">
+          No questions match the current filters
+        </p>
         <p className="text-xs text-muted-foreground">
           Try adjusting the year, status, or search filters above.
         </p>
@@ -53,7 +55,8 @@ export function QuestionPreviewTable({
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">
-        Showing {questions.length.toLocaleString()} of {totalCount.toLocaleString()} questions
+        Showing {questions.length.toLocaleString()} of{" "}
+        {totalCount.toLocaleString()} questions
       </p>
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
@@ -129,7 +132,9 @@ function QuestionRow({
               ? "bg-blue-50/50 dark:bg-blue-950/10 hover:bg-blue-50 dark:hover:bg-blue-950/20"
               : q.status === "warning"
                 ? "bg-amber-50/50 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                : "hover:bg-muted/30"
+                : q.status === "valid"
+                  ? "bg-green-100/50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20"
+                  : "hover:bg-muted/30",
       )}
     >
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
@@ -138,12 +143,12 @@ function QuestionRow({
       <td className="px-3 py-2 text-xs font-medium tabular-nums">
         {q.year ?? <span className="italic text-muted-foreground">—</span>}
       </td>
-      <td className="px-3 py-2 max-w-[400px]">
+      <td className="px-3 py-2 max-w-100">
         <div className="flex flex-col gap-0.5">
           <span
             className={cn(
               "text-sm leading-snug",
-              !q.text && "italic text-muted-foreground"
+              !q.text && "italic text-muted-foreground",
             )}
           >
             {q.text ? truncate(q.text) : "Missing question text"}
