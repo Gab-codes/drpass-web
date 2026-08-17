@@ -186,6 +186,116 @@ function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
   });
 }
 
+function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
+  const BOUNDARY_REGEX = /(?:^|\s+)(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*/gi;
+  
+  type Piece = { letter: AnswerOption, text: string, sourceCol: AnswerOption };
+  const allPieces: Piece[] = [];
+  
+  for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
+    const text = rawOptions[col];
+    if (!text) continue;
+    
+    const matches = [...text.matchAll(BOUNDARY_REGEX)];
+    if (matches.length === 0) {
+      allPieces.push({ letter: col, text, sourceCol: col });
+      continue;
+    }
+    
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const matchLetter = match[1].toUpperCase() as AnswerOption;
+      
+      if (i === 0 && match.index! > 0) {
+        allPieces.push({ 
+          letter: col, 
+          text: text.substring(0, match.index!).trim(), 
+          sourceCol: col
+        });
+      }
+      
+      const nextIndex = i + 1 < matches.length ? matches[i+1].index! : text.length;
+      allPieces.push({
+        letter: matchLetter,
+        text: text.substring(match.index! + match[0].length, nextIndex).trim(),
+        sourceCol: col
+      });
+    }
+  }
+
+  const piecesByLetter: Record<AnswerOption, Piece[]> = { A: [], B: [], C: [], D: [] };
+  for (const p of allPieces) {
+    if (p.text.trim() !== "") {
+      piecesByLetter[p.letter].push(p);
+    }
+  }
+
+  let hasCollision = false;
+  for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
+    if (piecesByLetter[letter].length > 1) {
+      hasCollision = true;
+      break;
+    }
+  }
+
+  if (!hasCollision) {
+    const finalOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+    for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
+      if (piecesByLetter[letter].length === 1) {
+        finalOptions[letter] = piecesByLetter[letter][0].text;
+      }
+    }
+    return { options: finalOptions, conflict: false };
+  }
+
+  const safePiecesByLetter: Record<AnswerOption, Piece[]> = { A: [], B: [], C: [], D: [] };
+  for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
+    const text = rawOptions[col];
+    if (!text) continue;
+    
+    const match = text.match(/^(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*(.*)/is);
+    if (match) {
+      const matchLetter = match[1].toUpperCase() as AnswerOption;
+      safePiecesByLetter[matchLetter].push({ letter: matchLetter, text: match[2].trim(), sourceCol: col });
+    } else {
+      safePiecesByLetter[col].push({ letter: col, text: text.trim(), sourceCol: col });
+    }
+  }
+  
+  let hasSafeCollision = false;
+  for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
+    const nonEmpty = safePiecesByLetter[letter].filter(p => p.text !== "");
+    if (nonEmpty.length > 1) {
+      hasSafeCollision = true;
+      break;
+    }
+  }
+  
+  if (!hasSafeCollision) {
+    const finalOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+    for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
+      const nonEmpty = safePiecesByLetter[letter].filter(p => p.text !== "");
+      if (nonEmpty.length === 1) {
+        finalOptions[letter] = nonEmpty[0].text;
+      }
+    }
+    return { options: finalOptions, conflict: false };
+  }
+
+  const fallbackOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+  for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
+    const raw = rawOptions[col];
+    const match = raw.match(/^(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*(.*)/is);
+    if (match && match[1].toUpperCase() === col) {
+      fallbackOptions[col] = match[2].trim();
+    } else {
+      fallbackOptions[col] = raw.trim();
+    }
+  }
+  
+  return { options: fallbackOptions, conflict: true, conflictReason: "Conflicting option labels detected. Please review." };
+}
+
 // ── XLSX ─────────────────────────────────────────────────────────────────────
 
 export async function parseXlsx(
@@ -244,6 +354,15 @@ export async function parseXlsx(
         const rawText = String(record.questionText ?? "").trim();
         const { questionNumber, cleanText } = extractQuestionNumber(rawText);
         
+        const rawOptions = {
+          A: String(record.optionA ?? "").trim(),
+          B: String(record.optionB ?? "").trim(),
+          C: String(record.optionC ?? "").trim(),
+          D: String(record.optionD ?? "").trim(),
+        };
+        
+        const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
           rowIndex: i + 1,
@@ -253,10 +372,10 @@ export async function parseXlsx(
           text: cleanText,
           rawText,
           options: [
-            { key: "A", text: String(record.optionA ?? "").trim() },
-            { key: "B", text: String(record.optionB ?? "").trim() },
-            { key: "C", text: String(record.optionC ?? "").trim() },
-            { key: "D", text: String(record.optionD ?? "").trim() },
+            { key: "A", text: normOptions.A },
+            { key: "B", text: normOptions.B },
+            { key: "C", text: normOptions.C },
+            { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(record.correctAnswer),
         };
@@ -268,9 +387,14 @@ export async function parseXlsx(
 
         let { status, statusReason } = detectStatus(base);
         
+        if (conflict && status === "valid") {
+          status = "warning";
+          statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
+        }
+
         if (yearConflict && status === "valid") {
            status = "warning";
-           statusReason = `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
+           statusReason = statusReason ? `${statusReason} | Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.` : `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
         }
         
         allQuestions.push({ ...base, status, statusReason });
@@ -297,6 +421,15 @@ export async function parseXlsx(
         const rawText = String(row.questionText ?? row.text ?? "").trim();
         const { questionNumber, cleanText } = extractQuestionNumber(rawText);
 
+        const rawOptions = {
+          A: String(row.optionA ?? "").trim(),
+          B: String(row.optionB ?? "").trim(),
+          C: String(row.optionC ?? "").trim(),
+          D: String(row.optionD ?? "").trim(),
+        };
+        
+        const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
           rowIndex: rowGlobal,
@@ -306,10 +439,10 @@ export async function parseXlsx(
           text: cleanText,
           rawText,
           options: [
-            { key: "A", text: String(row.optionA ?? "").trim() },
-            { key: "B", text: String(row.optionB ?? "").trim() },
-            { key: "C", text: String(row.optionC ?? "").trim() },
-            { key: "D", text: String(row.optionD ?? "").trim() },
+            { key: "A", text: normOptions.A },
+            { key: "B", text: normOptions.B },
+            { key: "C", text: normOptions.C },
+            { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(row.answer ?? row.correctAnswer),
         };
@@ -319,7 +452,12 @@ export async function parseXlsx(
           continue;
         }
 
-        const { status, statusReason } = detectStatus(base);
+        let { status, statusReason } = detectStatus(base);
+        if (conflict && status === "valid") {
+          status = "warning";
+          statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
+        }
+
         allQuestions.push({ ...base, status, statusReason });
       }
     }
@@ -368,6 +506,26 @@ export async function parseJson(
     const rawText = String(row.question ?? row.text ?? "").trim();
     const { questionNumber, cleanText } = extractQuestionNumber(rawText);
 
+    const rawOptionsArray = Array.isArray(row.options)
+      ? (row.options as unknown[]).map((o, i) => {
+          const opt = o as Record<string, unknown>;
+          return String(opt.text ?? opt.value ?? "").trim();
+        })
+      : [
+          String(row.optionA ?? row.a ?? "").trim(),
+          String(row.optionB ?? row.b ?? "").trim(),
+          String(row.optionC ?? row.c ?? "").trim(),
+          String(row.optionD ?? row.d ?? "").trim(),
+        ];
+        
+    const rawOptions = {
+      A: rawOptionsArray[0] ?? "",
+      B: rawOptionsArray[1] ?? "",
+      C: rawOptionsArray[2] ?? "",
+      D: rawOptionsArray[3] ?? "",
+    };
+    const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
       rowIndex: idx + 1,
@@ -376,30 +534,26 @@ export async function parseJson(
       subject: String(row.subject ?? "").trim(),
       text: cleanText,
       rawText,
-      options: Array.isArray(row.options)
-        ? (row.options as unknown[]).map((o, i) => {
-            const opt = o as Record<string, unknown>;
-            return {
-              key: (["A", "B", "C", "D"][i] ?? "A") as AnswerOption,
-              text: String(opt.text ?? opt.value ?? "").trim(),
-            };
-          })
-        : [
-            { key: "A", text: String(row.optionA ?? row.a ?? "").trim() },
-            { key: "B", text: String(row.optionB ?? row.b ?? "").trim() },
-            { key: "C", text: String(row.optionC ?? row.c ?? "").trim() },
-            { key: "D", text: String(row.optionD ?? row.d ?? "").trim() },
-          ],
+      options: [
+        { key: "A", text: normOptions.A },
+        { key: "B", text: normOptions.B },
+        { key: "C", text: normOptions.C },
+        { key: "D", text: normOptions.D },
+      ],
       answer: toAnswerOption(row.answer ?? row.correctAnswer),
     };
 
-    if (isInstructionRow(base)) {
-      contextRowCount++;
-      continue;
-    }
+      if (isInstructionRow(base)) {
+        contextRowCount++;
+        continue;
+      }
 
-    const { status, statusReason } = detectStatus(base);
-    questions.push({ ...base, status, statusReason });
+      let { status, statusReason } = detectStatus(base);
+      if (conflict && status === "valid") {
+        status = "warning";
+        statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
+      }
+      questions.push({ ...base, status, statusReason });
   }
 
   const withDuplicates = detectDuplicates(questions);
