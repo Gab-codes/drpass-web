@@ -4,7 +4,11 @@
 // The NestJS backend is the authoritative validation layer.
 
 import * as XLSX from "xlsx";
-import type { ParsedQuestion, ParseSummary, AnswerOption } from "./import-types";
+import type {
+  ParsedQuestion,
+  ParseSummary,
+  AnswerOption,
+} from "./import-types";
 
 function normaliseHeader(h: string): string {
   const normalized = String(h)
@@ -14,31 +18,31 @@ function normaliseHeader(h: string): string {
     .trim();
 
   const aliases: Record<string, string> = {
-    "year": "year",
-    "subject": "subject",
-    
-    "question": "questionText",
+    year: "year",
+    subject: "subject",
+
+    question: "questionText",
     "question text": "questionText",
-    "questions": "questionText",
-    "text": "questionText",
-    
+    questions: "questionText",
+    text: "questionText",
+
     "option a": "optionA",
-    "a": "optionA",
-    
+    a: "optionA",
+
     "option b": "optionB",
-    "b": "optionB",
-    
+    b: "optionB",
+
     "option c": "optionC",
-    "c": "optionC",
-    
+    c: "optionC",
+
     "option d": "optionD",
-    "d": "optionD",
-    
-    "answer": "correctAnswer",
+    d: "optionD",
+
+    answer: "correctAnswer",
     "correct answer": "correctAnswer",
     "correct option": "correctAnswer",
     "right answer": "correctAnswer",
-    "correct": "correctAnswer",
+    correct: "correctAnswer",
   };
 
   return aliases[normalized] ?? normalized;
@@ -47,9 +51,9 @@ function normaliseHeader(h: string): string {
 function toAnswerOption(v: unknown): AnswerOption | null {
   if (v == null || v === "") return null;
   const s = String(v).trim().toUpperCase();
-  
+
   if (["A", "B", "C", "D"].includes(s)) return s as AnswerOption;
-  
+
   const match = s.match(/(?:OPTION|ANS|ANSWER)\s*[-_:]?\s*([ABCD])/i);
   if (match) return match[1].toUpperCase() as AnswerOption;
 
@@ -57,7 +61,7 @@ function toAnswerOption(v: unknown): AnswerOption | null {
   if (letters.length === 1 && ["A", "B", "C", "D"].includes(letters)) {
     return letters as AnswerOption;
   }
-  
+
   return null;
 }
 
@@ -69,7 +73,10 @@ function extractSheetMetadata(sheetName: string) {
   const yearMatch = sheetName.match(/\b(19|20)\d{2}\b/);
   if (yearMatch) {
     year = parseInt(yearMatch[0], 10);
-    const potentialSubject = sheetName.replace(yearMatch[0], "").trim().replace(/^[-_\s]+|[-_\s]+$/g, "");
+    const potentialSubject = sheetName
+      .replace(yearMatch[0], "")
+      .trim()
+      .replace(/^[-_\s]+|[-_\s]+$/g, "");
     // Only use as subject if it looks like a real word (e.g., Account, Biology)
     if (potentialSubject.length > 2 && /^[a-zA-Z\s]+$/.test(potentialSubject)) {
       subject = potentialSubject;
@@ -79,9 +86,57 @@ function extractSheetMetadata(sheetName: string) {
   return { year, subject };
 }
 
-function detectHeaderRow(rows: unknown[][]): { headerRowIndex: number; columnMap: Record<number, string> } | null {
+function parseJsonOptions(
+  row: Record<string, unknown>,
+): Record<AnswerOption, string> {
+  const options = row.options;
+
+  if (Array.isArray(options)) {
+    return {
+      A: extractOptionText(options[0]),
+      B: extractOptionText(options[1]),
+      C: extractOptionText(options[2]),
+      D: extractOptionText(options[3]),
+    };
+  }
+
+  if (options && typeof options === "object") {
+    const optionObject = options as Record<string, unknown>;
+
+    return {
+      A: String(optionObject.A ?? optionObject.a ?? "").trim(),
+      B: String(optionObject.B ?? optionObject.b ?? "").trim(),
+      C: String(optionObject.C ?? optionObject.c ?? "").trim(),
+      D: String(optionObject.D ?? optionObject.d ?? "").trim(),
+    };
+  }
+
+  return {
+    A: String(row.optionA ?? row.a ?? "").trim(),
+    B: String(row.optionB ?? row.b ?? "").trim(),
+    C: String(row.optionC ?? row.c ?? "").trim(),
+    D: String(row.optionD ?? row.d ?? "").trim(),
+  };
+}
+
+function extractOptionText(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value).trim();
+  }
+
+  if (value && typeof value === "object") {
+    const option = value as Record<string, unknown>;
+    return String(option.text ?? option.value ?? "").trim();
+  }
+
+  return "";
+}
+
+function detectHeaderRow(
+  rows: unknown[][],
+): { headerRowIndex: number; columnMap: Record<number, string> } | null {
   const limit = Math.min(rows.length, 20);
-  
+
   let bestRowIdx = -1;
   let bestMap: Record<number, string> = {};
   let maxScore = 0;
@@ -89,21 +144,32 @@ function detectHeaderRow(rows: unknown[][]): { headerRowIndex: number; columnMap
   for (let i = 0; i < limit; i++) {
     const row = rows[i];
     if (!Array.isArray(row)) continue;
-    
+
     let score = 0;
     const map: Record<number, string> = {};
-    
+
     for (let colIdx = 0; colIdx < row.length; colIdx++) {
       const cell = row[colIdx];
       if (typeof cell !== "string") continue;
       const semantic = normaliseHeader(cell);
-      
-      if (["questionText", "optionA", "optionB", "optionC", "optionD", "correctAnswer", "year", "subject"].includes(semantic)) {
+
+      if (
+        [
+          "questionText",
+          "optionA",
+          "optionB",
+          "optionC",
+          "optionD",
+          "correctAnswer",
+          "year",
+          "subject",
+        ].includes(semantic)
+      ) {
         score++;
         map[colIdx] = semantic;
       }
     }
-    
+
     if (score > maxScore) {
       maxScore = score;
       bestRowIdx = i;
@@ -115,7 +181,7 @@ function detectHeaderRow(rows: unknown[][]): { headerRowIndex: number; columnMap
   if (maxScore >= 2 && Object.values(bestMap).includes("questionText")) {
     return { headerRowIndex: bestRowIdx, columnMap: bestMap };
   }
-  
+
   return null;
 }
 
@@ -131,7 +197,9 @@ function extractQuestionNumber(text: string) {
   return { questionNumber: undefined, cleanText: text };
 }
 
-function isInstructionRow(q: Omit<ParsedQuestion, "status" | "statusReason">): boolean {
+function isInstructionRow(
+  q: Omit<ParsedQuestion, "status" | "statusReason">,
+): boolean {
   if (!q.text || q.text.trim() === "") return false;
   const nonEmptyOptions = q.options.filter((o) => o.text.trim() !== "");
   return !q.answer && nonEmptyOptions.length === 0;
@@ -145,7 +213,10 @@ function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
     return { status: "error", statusReason: "Missing question text" };
   }
   if (!q.answer) {
-    return { status: "error", statusReason: "Missing or invalid correct answer" };
+    return {
+      status: "error",
+      statusReason: "Missing or invalid correct answer",
+    };
   }
   if (!q.year) {
     return { status: "error", statusReason: "Missing year" };
@@ -188,42 +259,48 @@ function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
 
 function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
   const BOUNDARY_REGEX = /(?:^|\s+)(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*/gi;
-  
-  type Piece = { letter: AnswerOption, text: string, sourceCol: AnswerOption };
+
+  type Piece = { letter: AnswerOption; text: string; sourceCol: AnswerOption };
   const allPieces: Piece[] = [];
-  
+
   for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
     const text = rawOptions[col];
     if (!text) continue;
-    
+
     const matches = [...text.matchAll(BOUNDARY_REGEX)];
     if (matches.length === 0) {
       allPieces.push({ letter: col, text, sourceCol: col });
       continue;
     }
-    
+
     for (let i = 0; i < matches.length; i++) {
       const match = matches[i];
       const matchLetter = match[1].toUpperCase() as AnswerOption;
-      
+
       if (i === 0 && match.index! > 0) {
-        allPieces.push({ 
-          letter: col, 
-          text: text.substring(0, match.index!).trim(), 
-          sourceCol: col
+        allPieces.push({
+          letter: col,
+          text: text.substring(0, match.index!).trim(),
+          sourceCol: col,
         });
       }
-      
-      const nextIndex = i + 1 < matches.length ? matches[i+1].index! : text.length;
+
+      const nextIndex =
+        i + 1 < matches.length ? matches[i + 1].index! : text.length;
       allPieces.push({
         letter: matchLetter,
         text: text.substring(match.index! + match[0].length, nextIndex).trim(),
-        sourceCol: col
+        sourceCol: col,
       });
     }
   }
 
-  const piecesByLetter: Record<AnswerOption, Piece[]> = { A: [], B: [], C: [], D: [] };
+  const piecesByLetter: Record<AnswerOption, Piece[]> = {
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+  };
   for (const p of allPieces) {
     if (p.text.trim() !== "") {
       piecesByLetter[p.letter].push(p);
@@ -239,7 +316,12 @@ function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
   }
 
   if (!hasCollision) {
-    const finalOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+    const finalOptions: Record<AnswerOption, string> = {
+      A: "",
+      B: "",
+      C: "",
+      D: "",
+    };
     for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
       if (piecesByLetter[letter].length === 1) {
         finalOptions[letter] = piecesByLetter[letter][0].text;
@@ -248,33 +330,51 @@ function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
     return { options: finalOptions, conflict: false };
   }
 
-  const safePiecesByLetter: Record<AnswerOption, Piece[]> = { A: [], B: [], C: [], D: [] };
+  const safePiecesByLetter: Record<AnswerOption, Piece[]> = {
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+  };
   for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
     const text = rawOptions[col];
     if (!text) continue;
-    
+
     const match = text.match(/^(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*(.*)/is);
     if (match) {
       const matchLetter = match[1].toUpperCase() as AnswerOption;
-      safePiecesByLetter[matchLetter].push({ letter: matchLetter, text: match[2].trim(), sourceCol: col });
+      safePiecesByLetter[matchLetter].push({
+        letter: matchLetter,
+        text: match[2].trim(),
+        sourceCol: col,
+      });
     } else {
-      safePiecesByLetter[col].push({ letter: col, text: text.trim(), sourceCol: col });
+      safePiecesByLetter[col].push({
+        letter: col,
+        text: text.trim(),
+        sourceCol: col,
+      });
     }
   }
-  
+
   let hasSafeCollision = false;
   for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
-    const nonEmpty = safePiecesByLetter[letter].filter(p => p.text !== "");
+    const nonEmpty = safePiecesByLetter[letter].filter((p) => p.text !== "");
     if (nonEmpty.length > 1) {
       hasSafeCollision = true;
       break;
     }
   }
-  
+
   if (!hasSafeCollision) {
-    const finalOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+    const finalOptions: Record<AnswerOption, string> = {
+      A: "",
+      B: "",
+      C: "",
+      D: "",
+    };
     for (const letter of ["A", "B", "C", "D"] as AnswerOption[]) {
-      const nonEmpty = safePiecesByLetter[letter].filter(p => p.text !== "");
+      const nonEmpty = safePiecesByLetter[letter].filter((p) => p.text !== "");
       if (nonEmpty.length === 1) {
         finalOptions[letter] = nonEmpty[0].text;
       }
@@ -282,7 +382,12 @@ function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
     return { options: finalOptions, conflict: false };
   }
 
-  const fallbackOptions: Record<AnswerOption, string> = { A: "", B: "", C: "", D: "" };
+  const fallbackOptions: Record<AnswerOption, string> = {
+    A: "",
+    B: "",
+    C: "",
+    D: "",
+  };
   for (const col of ["A", "B", "C", "D"] as AnswerOption[]) {
     const raw = rawOptions[col];
     const match = raw.match(/^(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*(.*)/is);
@@ -292,14 +397,18 @@ function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
       fallbackOptions[col] = raw.trim();
     }
   }
-  
-  return { options: fallbackOptions, conflict: true, conflictReason: "Conflicting option labels detected. Please review." };
+
+  return {
+    options: fallbackOptions,
+    conflict: true,
+    conflictReason: "Conflicting option labels detected. Please review.",
+  };
 }
 
 // ── XLSX ─────────────────────────────────────────────────────────────────────
 
 export async function parseXlsx(
-  file: File
+  file: File,
 ): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: "array" });
@@ -310,58 +419,67 @@ export async function parseXlsx(
 
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
-    
+
     // First pass to detect header
-    const arrayRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+    const arrayRows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+      header: 1,
+      defval: "",
+    });
     if (arrayRows.length === 0) continue;
 
     const detected = detectHeaderRow(arrayRows);
-    
+
     if (detected) {
       // Strategy 1: Structured column parser
       const { headerRowIndex, columnMap } = detected;
       const sheetMeta = extractSheetMetadata(sheetName);
-      
+
       for (let i = headerRowIndex + 1; i < arrayRows.length; i++) {
         const row = arrayRows[i];
         if (!Array.isArray(row)) continue;
-        
+
         const record: Record<string, unknown> = {};
         for (const [colIdxStr, semantic] of Object.entries(columnMap)) {
-           const colIdx = parseInt(colIdxStr, 10);
-           record[semantic] = row[colIdx];
+          const colIdx = parseInt(colIdxStr, 10);
+          record[semantic] = row[colIdx];
         }
-        
-        if (Object.values(record).every(v => v === "" || v == null)) continue;
-        
+
+        if (Object.values(record).every((v) => v === "" || v == null)) continue;
+
         rowGlobal++;
         const clientId = `parsed_${rowGlobal}_${Math.random().toString(36).slice(2, 6)}`;
-        
+
         let rowYear = sheetMeta.year;
         let yearConflict = false;
         if (record.year) {
           const parsedYear = parseInt(String(record.year), 10);
           if (!isNaN(parsedYear)) {
             if (sheetMeta.year && parsedYear !== sheetMeta.year) {
-               yearConflict = true;
+              yearConflict = true;
             }
             rowYear = parsedYear;
           }
         }
-        
-        let rowSubject = record.subject ? String(record.subject).trim() : sheetMeta.subject;
-        
+
+        let rowSubject = record.subject
+          ? String(record.subject).trim()
+          : sheetMeta.subject;
+
         const rawText = String(record.questionText ?? "").trim();
         const { questionNumber, cleanText } = extractQuestionNumber(rawText);
-        
+
         const rawOptions = {
           A: String(record.optionA ?? "").trim(),
           B: String(record.optionB ?? "").trim(),
           C: String(record.optionC ?? "").trim(),
           D: String(record.optionD ?? "").trim(),
         };
-        
-        const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+
+        const {
+          options: normOptions,
+          conflict,
+          conflictReason,
+        } = normalizeOptions(rawOptions);
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -386,23 +504,29 @@ export async function parseXlsx(
         }
 
         let { status, statusReason } = detectStatus(base);
-        
+
         if (conflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
+          statusReason = statusReason
+            ? `${statusReason} | ${conflictReason}`
+            : conflictReason;
         }
 
         if (yearConflict && status === "valid") {
-           status = "warning";
-           statusReason = statusReason ? `${statusReason} | Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.` : `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
+          status = "warning";
+          statusReason = statusReason
+            ? `${statusReason} | Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`
+            : `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
         }
-        
+
         allQuestions.push({ ...base, status, statusReason });
       }
     } else {
       // Strategy 2: Legacy Parser (fallback)
-      const objectRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
-      
+      const objectRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+        defval: "",
+      });
+
       if (objectRows.length === 0) continue;
 
       const normalised = objectRows.map((raw) => {
@@ -417,7 +541,7 @@ export async function parseXlsx(
         rowGlobal++;
         const clientId = `parsed_legacy_${rowGlobal}_${Math.random().toString(36).slice(2, 6)}`;
         const year = row.year ? parseInt(String(row.year), 10) || null : null;
-        
+
         const rawText = String(row.questionText ?? row.text ?? "").trim();
         const { questionNumber, cleanText } = extractQuestionNumber(rawText);
 
@@ -427,8 +551,12 @@ export async function parseXlsx(
           C: String(row.optionC ?? "").trim(),
           D: String(row.optionD ?? "").trim(),
         };
-        
-        const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+
+        const {
+          options: normOptions,
+          conflict,
+          conflictReason,
+        } = normalizeOptions(rawOptions);
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -446,7 +574,7 @@ export async function parseXlsx(
           ],
           answer: toAnswerOption(row.answer ?? row.correctAnswer),
         };
-        
+
         if (isInstructionRow(base)) {
           contextRowCount++;
           continue;
@@ -455,7 +583,9 @@ export async function parseXlsx(
         let { status, statusReason } = detectStatus(base);
         if (conflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
+          statusReason = statusReason
+            ? `${statusReason} | ${conflictReason}`
+            : conflictReason;
         }
 
         allQuestions.push({ ...base, status, statusReason });
@@ -471,7 +601,7 @@ export async function parseXlsx(
 // ── JSON ──────────────────────────────────────────────────────────────────────
 
 export async function parseJson(
-  file: File
+  file: File,
 ): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
   const text = await file.text();
   let data: unknown;
@@ -489,7 +619,7 @@ export async function parseJson(
 
   if (raw.length === 0) {
     throw new Error(
-      "No questions found. Expected an array of question objects."
+      "No questions found. Expected an array of question objects.",
     );
   }
 
@@ -500,31 +630,19 @@ export async function parseJson(
     const item = raw[idx];
     const row = item as Record<string, unknown>;
     const clientId = `parsed_${idx + 1}_${Math.random().toString(36).slice(2, 6)}`;
-    
+
     let year = row.year ? parseInt(String(row.year), 10) || null : null;
-    
+
     const rawText = String(row.question ?? row.text ?? "").trim();
     const { questionNumber, cleanText } = extractQuestionNumber(rawText);
 
-    const rawOptionsArray = Array.isArray(row.options)
-      ? (row.options as unknown[]).map((o, i) => {
-          const opt = o as Record<string, unknown>;
-          return String(opt.text ?? opt.value ?? "").trim();
-        })
-      : [
-          String(row.optionA ?? row.a ?? "").trim(),
-          String(row.optionB ?? row.b ?? "").trim(),
-          String(row.optionC ?? row.c ?? "").trim(),
-          String(row.optionD ?? row.d ?? "").trim(),
-        ];
-        
-    const rawOptions = {
-      A: rawOptionsArray[0] ?? "",
-      B: rawOptionsArray[1] ?? "",
-      C: rawOptionsArray[2] ?? "",
-      D: rawOptionsArray[3] ?? "",
-    };
-    const { options: normOptions, conflict, conflictReason } = normalizeOptions(rawOptions);
+    const rawOptions = parseJsonOptions(row);
+
+    const {
+      options: normOptions,
+      conflict,
+      conflictReason,
+    } = normalizeOptions(rawOptions);
 
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
@@ -543,17 +661,19 @@ export async function parseJson(
       answer: toAnswerOption(row.answer ?? row.correctAnswer),
     };
 
-      if (isInstructionRow(base)) {
-        contextRowCount++;
-        continue;
-      }
+    if (isInstructionRow(base)) {
+      contextRowCount++;
+      continue;
+    }
 
-      let { status, statusReason } = detectStatus(base);
-      if (conflict && status === "valid") {
-        status = "warning";
-        statusReason = statusReason ? `${statusReason} | ${conflictReason}` : conflictReason;
-      }
-      questions.push({ ...base, status, statusReason });
+    let { status, statusReason } = detectStatus(base);
+    if (conflict && status === "valid") {
+      status = "warning";
+      statusReason = statusReason
+        ? `${statusReason} | ${conflictReason}`
+        : conflictReason;
+    }
+    questions.push({ ...base, status, statusReason });
   }
 
   const withDuplicates = detectDuplicates(questions);
@@ -563,7 +683,10 @@ export async function parseJson(
 
 // ── Shared ─────────────────────────────────────────────────────────────────
 
-function buildSummary(questions: ParsedQuestion[], contextRowCount: number = 0): ParseSummary {
+function buildSummary(
+  questions: ParsedQuestion[],
+  contextRowCount: number = 0,
+): ParseSummary {
   const years = [
     ...new Set(questions.map((q) => q.year).filter(Boolean) as number[]),
   ].sort((a, b) => a - b);
@@ -582,7 +705,7 @@ function buildSummary(questions: ParsedQuestion[], contextRowCount: number = 0):
 
 export async function parseFile(
   file: File,
-  format: "xlsx" | "json"
+  format: "xlsx" | "json",
 ): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
   if (format === "xlsx") return parseXlsx(file);
   return parseJson(file);
