@@ -3,7 +3,11 @@
 // This lets the UI render a complete, representative preview before the backend
 // is wired up.
 
-import type { ParsedQuestion, ParseSummary, ImportRecord } from "./import-types";
+import type {
+  ParsedQuestion,
+  ParseSummary,
+  ImportRecord,
+} from "./import-types";
 
 let _idCounter = 0;
 function cid() {
@@ -26,6 +30,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "C",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2020_02",
@@ -41,6 +47,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "C",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2020_03",
@@ -56,7 +64,10 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "A",
     status: "warning",
-    statusReason: "Options B, C, D are non-standard for a multiple-choice format",
+    statusReason:
+      "Options B, C, D are non-standard for a multiple-choice format",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2020_04",
@@ -72,6 +83,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "C",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2020_05",
@@ -87,6 +100,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "B",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
 
   // ── 2021 ──────────────────────────────────────────────────────────────────
@@ -104,6 +119,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "D",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2021_02",
@@ -121,6 +138,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     status: "duplicate",
     statusReason: "Question text closely matches row 1 (2020)",
     possibleDuplicateOf: "q_2020_01",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2021_03",
@@ -136,6 +155,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "A",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2021_04",
@@ -152,6 +173,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     answer: "A",
     status: "error",
     statusReason: "Missing question text",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2021_05",
@@ -167,6 +190,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "B",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
 
   // ── 2022 ──────────────────────────────────────────────────────────────────
@@ -184,6 +209,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "A",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2022_02",
@@ -199,6 +226,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "A",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2022_03",
@@ -215,6 +244,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     answer: null,
     status: "error",
     statusReason: "Missing correct answer",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2022_04",
@@ -232,6 +263,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     status: "duplicate",
     statusReason: "Question text closely matches row 2 (2020)",
     possibleDuplicateOf: "q_2020_02",
+    hasImage: false,
+    image: null,
   },
   {
     _clientId: "q_2022_05",
@@ -247,6 +280,8 @@ export const MOCK_QUESTIONS: ParsedQuestion[] = [
     ],
     answer: "B",
     status: "valid",
+    hasImage: false,
+    image: null,
   },
 ];
 

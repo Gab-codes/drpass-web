@@ -33,6 +33,8 @@ export interface ParsedQuestion {
   duplicateResolution?: "keep" | "remove";
   /** Whether the admin has edited this question in the preview. */
   isEdited?: boolean;
+  hasImage: boolean;
+  image: string | null;
 }
 
 export interface ParseSummary {

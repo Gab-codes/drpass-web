@@ -11,7 +11,14 @@ import type { ParsedQuestion, AnswerOption } from "@/lib/import-types";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
 import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Edit01Icon } from "@hugeicons/core-free-icons";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Edit01Icon,
+  Image01Icon,
+  AlertCircleIcon,
+} from "@hugeicons/core-free-icons";
 
 interface QuestionReviewDialogProps {
   question: ParsedQuestion | null;
@@ -35,10 +42,35 @@ export function QuestionReviewDialog({
 
   if (!question) return null;
 
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !onEdit || !question) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (!question) return;
+      onEdit({
+        ...question,
+        image: event.target?.result as string,
+        isEdited: true,
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleHasImageChange(checked: boolean) {
+    if (!onEdit || !question) return;
+    onEdit({
+      ...question,
+      hasImage: checked,
+      image: checked ? question.image : null,
+      isEdited: true,
+    });
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl max-h-[93vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Question Detail
@@ -90,6 +122,115 @@ export function QuestionReviewDialog({
                 )}
               </p>
             </div>
+
+            {/* Image Section */}
+            {(question.hasImage || (!readOnly && onEdit)) && (
+              <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/10">
+                <div className="flex flex-row items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label
+                      htmlFor="review-has-image"
+                      className="text-base font-semibold flex items-center gap-1.5"
+                    >
+                      <HugeiconsIcon icon={Image01Icon} className="h-4 w-4" />
+                      Image Attachment
+                    </Label>
+                    {!readOnly && onEdit && (
+                      <p className="text-sm text-muted-foreground">
+                        Does this question require an image?
+                      </p>
+                    )}
+                  </div>
+                  {!readOnly && onEdit ? (
+                    <Switch
+                      id="review-has-image"
+                      checked={question.hasImage}
+                      onCheckedChange={handleHasImageChange}
+                    />
+                  ) : (
+                    question.hasImage && (
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        Yes
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {question.hasImage && (
+                  <div className="pt-2">
+                    {question.image ? (
+                      <div className="space-y-2">
+                        <div className="relative inline-block border border-border rounded-md overflow-hidden max-w-sm">
+                          <img
+                            src={question.image}
+                            alt="Question diagram"
+                            className="max-h-48 object-contain bg-muted/50"
+                          />
+                        </div>
+                        {!readOnly && onEdit && (
+                          <div className="flex gap-2">
+                            <Label
+                              htmlFor="review-replace-image"
+                              className="cursor-pointer"
+                            >
+                              <div className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 py-1 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                                Replace Image
+                              </div>
+                              <input
+                                id="review-replace-image"
+                                type="file"
+                                accept="image/png, image/jpeg, image/webp"
+                                className="hidden"
+                                onChange={handleImageUpload}
+                              />
+                            </Label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              onClick={() =>
+                                onEdit({
+                                  ...question,
+                                  image: null,
+                                  isEdited: true,
+                                })
+                              }
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {!readOnly && onEdit ? (
+                          <>
+                            <Input
+                              type="file"
+                              accept="image/png, image/jpeg, image/webp"
+                              onChange={handleImageUpload}
+                              className="border-destructive"
+                            />
+                            <p className="flex items-center gap-1 text-xs text-destructive">
+                              <HugeiconsIcon
+                                icon={AlertCircleIcon}
+                                className="h-3 w-3"
+                              />
+                              Image is required because this question is marked
+                              as containing an image.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm italic text-muted-foreground">
+                            Image missing
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Options */}
             <div>

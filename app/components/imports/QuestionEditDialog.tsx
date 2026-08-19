@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import type { ParsedQuestion, AnswerOption } from "@/lib/import-types";
 
 interface QuestionEditDialogProps {
@@ -40,7 +41,7 @@ export function QuestionEditDialog({
 
   function setField<K extends keyof ParsedQuestion>(
     key: K,
-    value: ParsedQuestion[K]
+    value: ParsedQuestion[K],
   ) {
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
@@ -51,8 +52,29 @@ export function QuestionEditDialog({
       return {
         ...prev,
         options: prev.options.map((o) =>
-          o.key === optionKey ? { ...o, text } : o
+          o.key === optionKey ? { ...o, text } : o,
         ),
+      };
+    });
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setField("image", event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleHasImageChange(checked: boolean) {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        hasImage: checked,
+        image: checked ? prev.image : null,
       };
     });
   }
@@ -66,11 +88,12 @@ export function QuestionEditDialog({
   const hasText = draft.text.trim() !== "";
   const hasAnswer = draft.answer !== null;
   const hasYear = draft.year !== null;
-  const canSave = hasText && hasAnswer && hasYear;
+  const hasValidImage = !draft.hasImage || draft.image !== null;
+  const canSave = hasText && hasAnswer && hasYear && hasValidImage;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[93vh] overflow-y-auto scrollbar-none">
         <DialogHeader>
           <DialogTitle>Edit Question</DialogTitle>
         </DialogHeader>
@@ -129,6 +152,82 @@ export function QuestionEditDialog({
                 <HugeiconsIcon icon={AlertCircleIcon} className="h-3 w-3" />
                 Question text is required
               </p>
+            )}
+          </div>
+
+          {/* Image */}
+          <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="edit-has-image" className="text-base">
+                  Question contains an image
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable this if the question includes a diagram, chart, figure,
+                  or other visual content.
+                </p>
+              </div>
+              <Switch
+                id="edit-has-image"
+                checked={draft.hasImage}
+                onCheckedChange={handleHasImageChange}
+              />
+            </div>
+
+            {draft.hasImage && (
+              <div className="pt-2">
+                {draft.image ? (
+                  <div className="space-y-2">
+                    <div className="relative inline-block border border-border rounded-md overflow-hidden max-w-sm">
+                      <img
+                        src={draft.image}
+                        alt="Question diagram"
+                        className="max-h-48 object-contain bg-muted/50"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Label htmlFor="replace-image" className="cursor-pointer">
+                        <div className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                          Replace Image
+                        </div>
+                        <input
+                          id="replace-image"
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                      </Label>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => setField("image", null)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleImageUpload}
+                      className={!hasValidImage ? "border-destructive" : ""}
+                    />
+                    {!hasValidImage && (
+                      <p className="flex items-center gap-1 text-xs text-destructive">
+                        <HugeiconsIcon
+                          icon={AlertCircleIcon}
+                          className="h-3 w-3"
+                        />
+                        Image is required because this question is marked as
+                        containing an image.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

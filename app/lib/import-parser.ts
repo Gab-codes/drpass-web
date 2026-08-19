@@ -569,6 +569,8 @@ export async function parseXlsx(
             { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(record.correctAnswer),
+          hasImage: false,
+          image: null,
         };
 
         if (isInstructionRow(base)) {
@@ -646,6 +648,8 @@ export async function parseXlsx(
             { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(row.answer ?? row.correctAnswer),
+          hasImage: false,
+          image: null,
         };
 
         if (isInstructionRow(base)) {
@@ -732,6 +736,8 @@ export async function parseJson(
         { key: "D", text: normOptions.D },
       ],
       answer: toAnswerOption(row.answer ?? row.correctAnswer),
+      hasImage: false,
+      image: null,
     };
 
     if (isInstructionRow(base)) {

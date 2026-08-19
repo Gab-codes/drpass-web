@@ -5,6 +5,7 @@ import {
   Copy01Icon,
   Edit01Icon,
   Delete01Icon,
+  Image01Icon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,12 @@ function QuestionRow({
           </span>
           {q.isEdited && (
             <span className="text-xs text-muted-foreground">Edited</span>
+          )}
+          {q.hasImage && (
+            <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+              <HugeiconsIcon icon={Image01Icon} className="h-3 w-3" />
+              Has image
+            </span>
           )}
           {isRemoved && (
             <span className="text-xs font-medium text-muted-foreground">
