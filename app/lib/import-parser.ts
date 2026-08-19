@@ -65,25 +65,98 @@ function toAnswerOption(v: unknown): AnswerOption | null {
   return null;
 }
 
-function extractSheetMetadata(sheetName: string) {
-  let year: number | null = null;
-  let subject: string | null = null;
+// ── Spreadsheet metadata helpers ────────────────────────────────────────────
 
-  // Find a 4 digit year starting with 19 or 20
-  const yearMatch = sheetName.match(/\b(19|20)\d{2}\b/);
-  if (yearMatch) {
-    year = parseInt(yearMatch[0], 10);
-    const potentialSubject = sheetName
-      .replace(yearMatch[0], "")
-      .trim()
-      .replace(/^[-_\s]+|[-_\s]+$/g, "");
-    // Only use as subject if it looks like a real word (e.g., Account, Biology)
-    if (potentialSubject.length > 2 && /^[a-zA-Z\s]+$/.test(potentialSubject)) {
-      subject = potentialSubject;
-    }
-  }
+/**
+ * Auto-generated sheet names that carry no subject information.
+ * Matches: Sheet1, Sheet 1, Sheet, Worksheet1, Worksheet 1, Worksheet
+ */
+const GENERIC_SHEET_RE = /^(sheet\s*\d*|worksheet\s*\d*)$/i;
+
+/**
+ * Remove common spreadsheet naming artifacts from a raw string fragment and
+ * return a cleaned subject candidate, or null if the result is unusable.
+ *
+ * Stripped artifacts:
+ *   - Index suffixes:  (1)  (2)  [1]  [2]
+ *   - Copy suffixes:   Copy  - Copy  Copy 1  (case-insensitive)
+ *   - Underscores:     replaced with spaces so they act as word separators
+ *   - Leading/trailing separators: spaces, hyphens
+ */
+function cleanToSubject(raw: string): string | null {
+  const cleaned = raw
+    .replace(/\(\d+\)|\[\d+\]/g, " ")       // (1), [2] → space
+    .replace(/[-_\s]*\bcopy\s*\d*\b/gi, " ") // Copy, - Copy, Copy 1 → space
+    .replace(/_+/g, " ")                      // underscores → spaces
+    .replace(/^[-\s]+|[-\s]+$/g, "")          // trim leading/trailing - and spaces
+    .replace(/\s{2,}/g, " ")                  // collapse runs of whitespace
+    .trim();
+
+  if (cleaned.length < 2) return null;
+  if (GENERIC_SHEET_RE.test(cleaned)) return null;
+  // Must start with a letter; allows letters, digits, spaces, hyphens,
+  // apostrophes, ampersands, and periods (e.g. "Use of English", "Agric. Sci")
+  if (!/^[a-zA-Z][a-zA-Z0-9\s\-'&.]*$/.test(cleaned)) return null;
+
+  return cleaned;
+}
+
+/**
+ * Extract a 4-digit year (19xx or 20xx) and a cleaned subject from any raw
+ * string (sheet name or filename stem). The two are extracted independently:
+ * a missing year does not prevent subject extraction, and vice-versa.
+ */
+function extractYearAndSubject(raw: string): {
+  year: number | null;
+  subject: string | null;
+} {
+  // Normalise underscores to spaces before year matching so that \b word
+  // boundaries work correctly in names like "Mathematics_2020" (where "_" is
+  // treated as a word character by the regex engine, breaking \b before "2020").
+  const normalised = raw.replace(/_+/g, " ");
+
+  const yearMatch = normalised.match(/\b(19|20)\d{2}\b/);
+  const year = yearMatch ? parseInt(yearMatch[0], 10) : null;
+
+  // Remove the year token before attempting subject extraction
+  const withoutYear = yearMatch ? normalised.replace(yearMatch[0], "") : normalised;
+  const subject = cleanToSubject(withoutYear);
 
   return { year, subject };
+}
+
+/**
+ * Extract year and subject metadata from a worksheet name, with an optional
+ * workbook filename as a fallback source for any piece not found in the sheet
+ * name.
+ *
+ * Precedence for each field:
+ *   1. Value derived from the sheet name
+ *   2. Value derived from the workbook filename stem (filenameHint)
+ *   3. null
+ */
+export function extractSheetMetadata(
+  sheetName: string,
+  filenameHint?: string,
+): { year: number | null; subject: string | null } {
+  const fromSheet = extractYearAndSubject(sheetName);
+
+  // If the sheet name provided both pieces, return early — no fallback needed
+  if (fromSheet.year !== null && fromSheet.subject !== null) {
+    return fromSheet;
+  }
+
+  if (!filenameHint) return fromSheet;
+
+  // Strip the file extension (e.g. "CHEMISTRY.xlsx" → "CHEMISTRY",
+  // "Chemistry 2004.xlsx" → "Chemistry 2004") and apply the same extraction
+  const stem = filenameHint.replace(/\.[^.]+$/, "");
+  const fromFile = extractYearAndSubject(stem);
+
+  return {
+    year: fromSheet.year ?? fromFile.year,
+    subject: fromSheet.subject ?? fromFile.subject,
+  };
 }
 
 function parseJsonOptions(
@@ -432,7 +505,7 @@ export async function parseXlsx(
     if (detected) {
       // Strategy 1: Structured column parser
       const { headerRowIndex, columnMap } = detected;
-      const sheetMeta = extractSheetMetadata(sheetName);
+      const sheetMeta = extractSheetMetadata(sheetName, file.name);
 
       for (let i = headerRowIndex + 1; i < arrayRows.length; i++) {
         const row = arrayRows[i];
