@@ -18,7 +18,7 @@ interface QuestionPreviewTableProps {
   onReview: (question: ParsedQuestion) => void;
   onEdit: (question: ParsedQuestion) => void;
   onRemove: (clientId: string) => void;
-  onKeepDuplicate?: (clientId: string) => void;
+  onUndoRemove: (clientId: string) => void;
   /** When true, hide edit/remove actions (read-only mode for import detail page). */
   readOnly?: boolean;
 }
@@ -37,7 +37,7 @@ export function QuestionPreviewTable({
   onReview,
   onEdit,
   onRemove,
-  onKeepDuplicate,
+  onUndoRemove,
   readOnly = false,
 }: QuestionPreviewTableProps) {
   if (questions.length === 0) {
@@ -91,7 +91,7 @@ export function QuestionPreviewTable({
                 onReview={onReview}
                 onEdit={onEdit}
                 onRemove={onRemove}
-                onKeepDuplicate={onKeepDuplicate}
+                onUndoRemove={onUndoRemove}
                 readOnly={readOnly}
               />
             ))}
@@ -109,14 +109,14 @@ function QuestionRow({
   onReview,
   onEdit,
   onRemove,
-  onKeepDuplicate,
   readOnly,
+  onUndoRemove,
 }: {
   question: ParsedQuestion;
   onReview: (q: ParsedQuestion) => void;
   onEdit: (q: ParsedQuestion) => void;
   onRemove: (id: string) => void;
-  onKeepDuplicate?: (id: string) => void;
+  onUndoRemove: (id: string) => void;
   readOnly: boolean;
 }) {
   const isRemoved = q.duplicateResolution === "remove";
@@ -206,19 +206,6 @@ function QuestionRow({
                 <HugeiconsIcon icon={Edit01Icon} className="h-3.5 w-3.5" />
               </Button>
 
-              {q.status === "duplicate" && !isRemoved && onKeepDuplicate && (
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onKeepDuplicate(q._clientId)}
-                  aria-label="Keep this duplicate"
-                  title="Keep"
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  ✓
-                </Button>
-              )}
-
               {!isRemoved ? (
                 <Button
                   variant="ghost"
@@ -234,7 +221,7 @@ function QuestionRow({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => onKeepDuplicate?.(q._clientId)}
+                  onClick={() => onUndoRemove(q._clientId)}
                   title="Restore"
                   className="text-muted-foreground"
                 >

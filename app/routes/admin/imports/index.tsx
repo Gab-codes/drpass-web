@@ -17,7 +17,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ImportDropzone } from "@/components/imports/ImportDropzone";
 import { ImportSummary } from "@/components/imports/ImportSummary";
-import { ImportFilters, applyFilters } from "@/components/imports/ImportFilters";
+import {
+  ImportFilters,
+  applyFilters,
+} from "@/components/imports/ImportFilters";
 import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable";
 import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
 import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
@@ -52,34 +55,46 @@ export default function ImportsPage() {
   const [search, setSearch] = React.useState("");
 
   // ── Dialog state ──────────────────────────────────────────────────────────
-  const [reviewQuestion, setReviewQuestion] = React.useState<ParsedQuestion | null>(null);
-  const [editQuestion, setEditQuestion] = React.useState<ParsedQuestion | null>(null);
-  const [duplicateQuestion, setDuplicateQuestion] = React.useState<ParsedQuestion | null>(null);
+  const [reviewQuestion, setReviewQuestion] =
+    React.useState<ParsedQuestion | null>(null);
+  const [editQuestion, setEditQuestion] = React.useState<ParsedQuestion | null>(
+    null,
+  );
+  const [duplicateQuestion, setDuplicateQuestion] =
+    React.useState<ParsedQuestion | null>(null);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const filteredQuestions = React.useMemo(
     () => applyFilters(questions, yearFilter, statusFilter, search),
-    [questions, yearFilter, statusFilter, search]
+    [questions, yearFilter, statusFilter, search],
   );
 
   const duplicateMatch = React.useMemo(() => {
     if (!duplicateQuestion?.possibleDuplicateOf) return null;
-    return questions.find((q) => q._clientId === duplicateQuestion.possibleDuplicateOf) ?? null;
+    return (
+      questions.find(
+        (q) => q._clientId === duplicateQuestion.possibleDuplicateOf,
+      ) ?? null
+    );
   }, [duplicateQuestion, questions]);
 
   const keptDuplicates = questions.filter(
-    (q) => q.status === "duplicate" && q.duplicateResolution === "keep"
+    (q) => q.status === "duplicate" && q.duplicateResolution === "keep",
   ).length;
   const removedCount = questions.filter(
-    (q) => q.duplicateResolution === "remove"
+    (q) => q.duplicateResolution === "remove",
   ).length;
   const canSubmit =
     status === "preview" &&
     summary !== null &&
-    summary.errorCount - questions.filter((q) => q.status === "error" && q.duplicateResolution === "remove").length <= 0;
+    summary.errorCount -
+      questions.filter(
+        (q) => q.status === "error" && q.duplicateResolution === "remove",
+      ).length <=
+      0;
 
   const remainingErrors = questions.filter(
-    (q) => q.status === "error" && q.duplicateResolution !== "remove"
+    (q) => q.status === "error" && q.duplicateResolution !== "remove",
   ).length;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -111,7 +126,9 @@ export default function ImportsPage() {
       setStatus("preview");
     } catch (err) {
       clearInterval(progressInterval);
-      setParseError(err instanceof Error ? err.message : "Failed to parse file");
+      setParseError(
+        err instanceof Error ? err.message : "Failed to parse file",
+      );
       setStatus("error");
     }
   }
@@ -154,7 +171,7 @@ export default function ImportsPage() {
   function handleSaveEdit(updated: ParsedQuestion) {
     setQuestions((prev) => {
       const next = prev.map((q) =>
-        q._clientId === updated._clientId ? updated : q
+        q._clientId === updated._clientId ? updated : q,
       );
       updateSummary(next);
       return next;
@@ -167,7 +184,19 @@ export default function ImportsPage() {
       const next = prev.map((q) =>
         q._clientId === clientId
           ? { ...q, duplicateResolution: "remove" as const }
-          : q
+          : q,
+      );
+      updateSummary(next);
+      return next;
+    });
+  }
+
+  function handleUndoRemove(clientId: string) {
+    setQuestions((prev) => {
+      const next = prev.map((q) =>
+        q._clientId === clientId
+          ? { ...q, duplicateResolution: "keep" as const }
+          : q,
       );
       updateSummary(next);
       return next;
@@ -179,8 +208,8 @@ export default function ImportsPage() {
       prev.map((q) =>
         q._clientId === clientId
           ? { ...q, duplicateResolution: "keep" as const }
-          : q
-      )
+          : q,
+      ),
     );
   }
 
@@ -195,9 +224,10 @@ export default function ImportsPage() {
             validCount: active.filter((q) => q.status === "valid").length,
             warningCount: active.filter((q) => q.status === "warning").length,
             errorCount: active.filter((q) => q.status === "error").length,
-            duplicateCount: active.filter((q) => q.status === "duplicate").length,
+            duplicateCount: active.filter((q) => q.status === "duplicate")
+              .length,
           }
-        : s
+        : s,
     );
   }
 
@@ -247,9 +277,7 @@ export default function ImportsPage() {
       )}
 
       {/* ── PROCESSING ── */}
-      {status === "processing" && (
-        <ProcessingSection progress={progress} />
-      )}
+      {status === "processing" && <ProcessingSection progress={progress} />}
 
       {/* ── SUBMITTED ── */}
       {status === "submitted" && (
@@ -284,7 +312,7 @@ export default function ImportsPage() {
             onReview={(q) => setReviewQuestion(q)}
             onEdit={handleEditQuestion}
             onRemove={handleRemoveQuestion}
-            onKeepDuplicate={handleKeepDuplicate}
+            onUndoRemove={handleUndoRemove}
           />
 
           <Separator />
@@ -421,7 +449,10 @@ function UploadSection({
       {/* Error feedback */}
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-          <HugeiconsIcon icon={AlertCircleIcon} className="mt-0.5 h-4 w-4 shrink-0" />
+          <HugeiconsIcon
+            icon={AlertCircleIcon}
+            className="mt-0.5 h-4 w-4 shrink-0"
+          />
           <span>{error}</span>
         </div>
       )}
@@ -507,7 +538,7 @@ function SubmissionFooter({
   isSubmitting: boolean;
   onSubmit: () => void;
 }) {
-  const activeCount = summary.totalQuestions - removedCount;
+  const activeCount = summary.totalQuestions;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -515,16 +546,20 @@ function SubmissionFooter({
       <div className="space-y-0.5 text-sm">
         <p className="font-medium">
           {activeCount.toLocaleString()} question{activeCount === 1 ? "" : "s"}{" "}
-          across {summary.years.length} year{summary.years.length === 1 ? "" : "s"}
+          across {summary.years.length} year
+          {summary.years.length === 1 ? "" : "s"}
         </p>
         <p className="text-xs text-muted-foreground">
-          {keptDuplicates > 0 && `${keptDuplicates} duplicate${keptDuplicates === 1 ? "" : "s"} kept · `}
+          {keptDuplicates > 0 &&
+            `${keptDuplicates} duplicate${keptDuplicates === 1 ? "" : "s"} kept · `}
           {removedCount > 0 && `${removedCount} removed · `}
-          {summary.warningCount > 0 && `${summary.warningCount} warning${summary.warningCount === 1 ? "" : "s"}`}
+          {summary.warningCount > 0 &&
+            `${summary.warningCount} warning${summary.warningCount === 1 ? "" : "s"}`}
         </p>
         {remainingErrors > 0 && (
           <p className="text-xs font-medium text-destructive">
-            {remainingErrors} error{remainingErrors === 1 ? "" : "s"} must be fixed or removed before submitting
+            {remainingErrors} error{remainingErrors === 1 ? "" : "s"} must be
+            fixed or removed before submitting
           </p>
         )}
       </div>
@@ -536,7 +571,10 @@ function SubmissionFooter({
       >
         {isSubmitting ? (
           <>
-            <HugeiconsIcon icon={Clock01Icon} className="h-4 w-4 animate-spin" />
+            <HugeiconsIcon
+              icon={Clock01Icon}
+              className="h-4 w-4 animate-spin"
+            />
             Submitting…
           </>
         ) : (
@@ -560,7 +598,7 @@ function SubmittedSection({
   questions: ParsedQuestion[];
 }) {
   const activeCount = questions.filter(
-    (q) => q.duplicateResolution !== "remove"
+    (q) => q.duplicateResolution !== "remove",
   ).length;
 
   return (

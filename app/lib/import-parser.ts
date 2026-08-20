@@ -85,11 +85,11 @@ const GENERIC_SHEET_RE = /^(sheet\s*\d*|worksheet\s*\d*)$/i;
  */
 function cleanToSubject(raw: string): string | null {
   const cleaned = raw
-    .replace(/\(\d+\)|\[\d+\]/g, " ")       // (1), [2] → space
+    .replace(/\(\d+\)|\[\d+\]/g, " ") // (1), [2] → space
     .replace(/[-_\s]*\bcopy\s*\d*\b/gi, " ") // Copy, - Copy, Copy 1 → space
-    .replace(/_+/g, " ")                      // underscores → spaces
-    .replace(/^[-\s]+|[-\s]+$/g, "")          // trim leading/trailing - and spaces
-    .replace(/\s{2,}/g, " ")                  // collapse runs of whitespace
+    .replace(/_+/g, " ") // underscores → spaces
+    .replace(/^[-\s]+|[-\s]+$/g, "") // trim leading/trailing - and spaces
+    .replace(/\s{2,}/g, " ") // collapse runs of whitespace
     .trim();
 
   if (cleaned.length < 2) return null;
@@ -119,7 +119,9 @@ function extractYearAndSubject(raw: string): {
   const year = yearMatch ? parseInt(yearMatch[0], 10) : null;
 
   // Remove the year token before attempting subject extraction
-  const withoutYear = yearMatch ? normalised.replace(yearMatch[0], "") : normalised;
+  const withoutYear = yearMatch
+    ? normalised.replace(yearMatch[0], "")
+    : normalised;
   const subject = cleanToSubject(withoutYear);
 
   return { year, subject };
@@ -311,17 +313,20 @@ function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
 }
 
 function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
-  const seen = new Map<string, string>(); // normalised text → _clientId
+  const seen = new Map<string, string>();
 
   return questions.map((q) => {
-    const key = (q.text ?? "").toLowerCase().trim();
-    if (!key) return q;
+    const normalisedText = (q.text ?? "").toLowerCase().trim();
+    if (!normalisedText) return q;
+
+    const key = `${q.year ?? "unknown"}|${normalisedText}`;
 
     if (seen.has(key)) {
       return {
         ...q,
         status: "duplicate" as const,
-        statusReason: "Question text matches another question in this file",
+        statusReason:
+          "Question text matches another question from the same year in this file",
         possibleDuplicateOf: seen.get(key)!,
       };
     }
