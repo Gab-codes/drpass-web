@@ -9,6 +9,13 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("register", "routes/auth/register.tsx"),
+
+  //User routes
+  layout("layout/user-layout.tsx", [
+    route("dashboard", "routes/user/dashboard.tsx"),
+  ]),
+
+  //Admin routes
   layout("layout/admin-layout.tsx", [
     route("admin", "routes/admin/dashboard.tsx"),
     route("admin/subjects", "routes/admin/subjects.tsx"),
