@@ -50,7 +50,7 @@ export default function LoginPage() {
     <div className="flex min-h-svh items-center justify-center p-6 bg-muted/40">
       <div className="w-full max-w-sm p-6 bg-background rounded-xl border shadow-sm">
         <h1 className="text-2xl font-semibold mb-6 text-center">Sign In</h1>
-        
+
         {errorMsg && (
           <Alert variant="destructive" className="mb-4 p-3 text-sm">
             {errorMsg}
@@ -75,13 +75,11 @@ export default function LoginPage() {
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
             </div>
-            <Input
-              id="password"
-              type="password"
-              {...register("password")}
-            />
+            <Input id="password" type="password" {...register("password")} />
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
             )}
           </div>
 

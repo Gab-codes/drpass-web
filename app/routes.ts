@@ -9,7 +9,7 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("register", "routes/auth/register.tsx"),
-  layout("routes/admin/layout.tsx", [
+  layout("layout/admin-layout.tsx", [
     route("admin", "routes/admin/dashboard.tsx"),
     route("admin/subjects", "routes/admin/subjects.tsx"),
     route("admin/questions", "routes/admin/questions/index.tsx"),
