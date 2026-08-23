@@ -35,7 +35,7 @@ export default function RegisterPage() {
     onSuccess: () => {
       // Invalidate the current user query so it fetches the new session
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      navigate("/admin");
+      navigate("/dashboard");
     },
     onError: (error: any) => {
       setErrorMsg(error?.message || "An error occurred during registration.");

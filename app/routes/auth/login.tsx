@@ -31,10 +31,12 @@ export default function LoginPage() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: login,
-    onSuccess: () => {
+    onSuccess: (response) => {
       // Invalidate the current user query so it fetches the new session
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      navigate("/admin");
+      
+      const role = response?.data?.user?.role;
+      navigate(role === "admin" ? "/admin" : "/dashboard");
     },
     onError: (error: any) => {
       setErrorMsg(error?.message || "An error occurred during sign in.");
