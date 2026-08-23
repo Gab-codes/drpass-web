@@ -1,4 +1,6 @@
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
+import { useEffect } from "react";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/admin/app-sidebar";
 import {
   Breadcrumb,
@@ -26,6 +28,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function AdminLayout() {
+  const { data: user, isLoading, isError } = useCurrentUser();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && isError) {
+      navigate("/login");
+    }
+  }, [isLoading, isError, navigate]);
+
+  if (isLoading || !user) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -53,14 +68,14 @@ export default function AdminLayout() {
                   <DropdownMenuTrigger>
                     <button className="flex cursor-pointer items-center gap-2 outline-none">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt="Admin" />
-                        <AvatarFallback>AD</AvatarFallback>
+                        <AvatarImage src={user.image || ""} alt={user.name} />
+                        <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuGroup>
-                      <DropdownMenuLabel>Admin User</DropdownMenuLabel>
+                      <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>Profile</DropdownMenuItem>
                       <DropdownMenuItem>Settings</DropdownMenuItem>
