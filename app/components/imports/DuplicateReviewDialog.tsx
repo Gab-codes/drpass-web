@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { ParsedQuestion } from "@/lib/import-types";
+import type { ParsedQuestion } from "@/types/import-types";
 
 interface DuplicateReviewDialogProps {
   question: ParsedQuestion | null;

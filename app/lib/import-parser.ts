@@ -1,14 +1,9 @@
-// ─── Client-side file parsers ─────────────────────────────────────────────────
-// These parsers translate raw file content into ParsedQuestion[].
-// IMPORTANT: This parsing is for immediate UX preview only.
-// The NestJS backend is the authoritative validation layer.
-
 import * as XLSX from "xlsx";
 import type {
   ParsedQuestion,
   ParseSummary,
   AnswerOption,
-} from "./import-types";
+} from "../types/import-types";
 
 function normaliseHeader(h: string): string {
   const normalized = String(h)

@@ -32,7 +32,7 @@ import type {
   ImportStatus,
   ParsedQuestion,
   ParseSummary,
-} from "@/lib/import-types";
+} from "@/types/import-types";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 

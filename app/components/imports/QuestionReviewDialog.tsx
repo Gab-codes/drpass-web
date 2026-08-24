@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { ParsedQuestion, AnswerOption } from "@/lib/import-types";
+import type { ParsedQuestion, AnswerOption } from "@/types/import-types";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
 import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
 import { HugeiconsIcon } from "@hugeicons/react";

@@ -8,7 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { ImportFormat } from "@/lib/import-types";
+import type { ImportFormat } from "@/types/import-types";
 
 interface ImportDropzoneProps {
   format: ImportFormat;
@@ -119,7 +119,7 @@ export function ImportDropzone({
             dragging
               ? "border-primary bg-primary/5"
               : "border-border bg-muted/20 hover:border-primary/50 hover:bg-muted/40",
-            disabled && "pointer-events-none opacity-50"
+            disabled && "pointer-events-none opacity-50",
           )}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">

@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { ParsedQuestion, QuestionStatus } from "@/lib/import-types";
+import type { ParsedQuestion, QuestionStatus } from "@/types/import-types";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
 
 interface ImportFiltersProps {
@@ -32,9 +32,7 @@ export function ImportFilters({
   const years = React.useMemo(() => {
     const ys = [
       ...new Set(
-        questions
-          .map((q) => q.year)
-          .filter((y): y is number => y !== null)
+        questions.map((q) => q.year).filter((y): y is number => y !== null),
       ),
     ].sort((a, b) => b - a);
     return ys;
@@ -90,7 +88,7 @@ export function applyFilters(
   questions: ParsedQuestion[],
   yearFilter: string,
   statusFilter: string,
-  search: string
+  search: string,
 ): ParsedQuestion[] {
   return questions.filter((q) => {
     if (yearFilter !== "all" && String(q.year) !== yearFilter) return false;

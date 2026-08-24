@@ -9,7 +9,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { ParsedQuestion } from "@/lib/import-types";
+import type { ParsedQuestion } from "@/types/import-types";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
 
 interface QuestionPreviewTableProps {
