@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { QuestionStatus } from "@/lib/import-types";
+import type { QuestionStatus } from "@/types/import-types";
 
 // ── Centralised status badge helpers ─────────────────────────────────────────
 // All status colour decisions live here so they can be updated in one place.

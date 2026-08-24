@@ -20,7 +20,7 @@ import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable"
 import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
 import { DuplicateReviewDialog } from "@/components/imports/DuplicateReviewDialog";
 import { getMockImportRecord } from "@/lib/import-mock-data";
-import type { ParsedQuestion, ImportRecordStatus } from "@/lib/import-types";
+import type { ParsedQuestion, ImportRecordStatus } from "@/types/import-types";
 
 // ─── Status badge config ───────────────────────────────────────────────────────
 

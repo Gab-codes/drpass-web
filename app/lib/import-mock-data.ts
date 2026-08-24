@@ -7,7 +7,7 @@ import type {
   ParsedQuestion,
   ParseSummary,
   ImportRecord,
-} from "./import-types";
+} from "../types/import-types";
 
 let _idCounter = 0;
 function cid() {

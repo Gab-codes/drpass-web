@@ -9,7 +9,7 @@ import type {
   Calendar01Icon,
 } from "@hugeicons/core-free-icons";
 import * as Icons from "@hugeicons/core-free-icons";
-import type { ParseSummary } from "@/lib/import-types";
+import type { ParseSummary } from "@/types/import-types";
 
 // HugeIcons exports IconSvgObject (not a React component), so we pass the
 // icon object directly to HugeiconsIcon rather than storing ComponentType.
