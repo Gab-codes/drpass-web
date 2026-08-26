@@ -29,7 +29,7 @@ export const logout = async () => {
   return result;
 };
 
-export const getCurrentUser = async (): Promise<UserResponse> => {
+export const getCurrentUser = async () => {
   const response = await apiClient.get<UserResponse>("/auth/me");
   return response.data;
 };
