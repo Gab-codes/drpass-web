@@ -5,7 +5,7 @@ import type {
   AnswerOption,
 } from "../types/import-types";
 
-function normaliseHeader(h: string): string {
+export function normaliseHeader(h: string): string {
   const normalized = String(h)
     .toLowerCase()
     .replace(/[^a-z0-9]/g, " ")
@@ -51,7 +51,7 @@ function detectPossibleImage(text: string): boolean {
   return IMAGE_REFERENCE_RE.test(text);
 }
 
-function toAnswerOption(v: unknown): AnswerOption | null {
+export function toAnswerOption(v: unknown): AnswerOption | null {
   if (v == null || v === "") return null;
   const s = String(v).trim().toUpperCase();
 
@@ -86,7 +86,7 @@ const GENERIC_SHEET_RE = /^(sheet\s*\d*|worksheet\s*\d*)$/i;
  *   - Underscores:     replaced with spaces so they act as word separators
  *   - Leading/trailing separators: spaces, hyphens
  */
-function cleanToSubject(raw: string): string | null {
+export function cleanToSubject(raw: string): string | null {
   const cleaned = raw
     .replace(/\(\d+\)|\[\d+\]/g, " ") // (1), [2] → space
     .replace(/[-_\s]*\bcopy\s*\d*\b/gi, " ") // Copy, - Copy, Copy 1 → space
@@ -109,7 +109,7 @@ function cleanToSubject(raw: string): string | null {
  * string (sheet name or filename stem). The two are extracted independently:
  * a missing year does not prevent subject extraction, and vice-versa.
  */
-function extractYearAndSubject(raw: string): {
+export function extractYearAndSubject(raw: string): {
   year: number | null;
   subject: string | null;
 } {
@@ -197,7 +197,7 @@ function parseJsonOptions(
   };
 }
 
-function extractOptionText(value: unknown): string {
+export function extractOptionText(value: unknown): string {
   if (typeof value === "string" || typeof value === "number") {
     return String(value).trim();
   }
@@ -210,7 +210,7 @@ function extractOptionText(value: unknown): string {
   return "";
 }
 
-function detectHeaderRow(
+export function detectHeaderRow(
   rows: unknown[][],
 ): { headerRowIndex: number; columnMap: Record<number, string> } | null {
   const limit = Math.min(rows.length, 20);
@@ -263,7 +263,7 @@ function detectHeaderRow(
   return null;
 }
 
-function extractQuestionNumber(text: string) {
+export function extractQuestionNumber(text: string) {
   // Support 1., 1), 1 -
   const match = text.match(/^(\d+)(?:\.|\)|-)\s*(.*)/s);
   if (match) {
@@ -275,7 +275,7 @@ function extractQuestionNumber(text: string) {
   return { questionNumber: undefined, cleanText: text };
 }
 
-function isInstructionRow(
+export function isInstructionRow(
   q: Omit<ParsedQuestion, "status" | "statusReason">,
 ): boolean {
   if (!q.text || q.text.trim() === "") return false;
@@ -283,7 +283,7 @@ function isInstructionRow(
   return !q.answer && nonEmptyOptions.length === 0;
 }
 
-function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
+export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
   status: ParsedQuestion["status"];
   statusReason?: string;
 } {
@@ -322,7 +322,7 @@ function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
   return { status: "valid" };
 }
 
-function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
+export function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
   const seen = new Map<string, string>();
 
   return questions.map((q) => {
@@ -345,7 +345,7 @@ function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
   });
 }
 
-function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
+export function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
   const BOUNDARY_REGEX = /(?:^|\s+)(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*/gi;
 
   type Piece = { letter: AnswerOption; text: string; sourceCol: AnswerOption };
@@ -777,7 +777,7 @@ export async function parseJson(
 
 // ── Shared ─────────────────────────────────────────────────────────────────
 
-function buildSummary(
+export function buildSummary(
   questions: ParsedQuestion[],
   contextRowCount: number = 0,
 ): ParseSummary {
