@@ -7,6 +7,7 @@ import {
   isInstructionRow,
   detectStatus,
   detectDuplicates,
+  revalidateQuestions,
   normalizeOptions,
   detectHeaderRow,
   buildSummary,
@@ -174,7 +175,7 @@ describe("isInstructionRow", () => {
 });
 
 describe("detectStatus", () => {
-  const make = (overrides: Partial<Omit<ParsedQuestion, "status" | "statusReason">> = {}): Omit<ParsedQuestion, "status" | "statusReason"> => ({
+  const make = (overrides: Partial<ParsedQuestion> = {}): Omit<ParsedQuestion, "status" | "statusReason"> => ({
     _clientId: "q1",
     rowIndex: 1,
     text: "Valid question",
@@ -279,6 +280,142 @@ describe("detectDuplicates", () => {
     const result = detectDuplicates([q1, q2]);
     expect(result[0].status).toBe("valid");
     expect(result[1].status).toBe("valid");
+  });
+});
+
+describe("revalidateQuestions", () => {
+  const makeQ = (
+    overrides: Partial<ParsedQuestion> = {},
+  ): ParsedQuestion => ({
+    _clientId: "q1",
+    rowIndex: 1,
+    text: "Valid question",
+    options: [
+      { key: "A", text: "Opt A" },
+      { key: "B", text: "Opt B" },
+      { key: "C", text: "Opt C" },
+      { key: "D", text: "Opt D" },
+    ],
+    answer: "A",
+    year: 2020,
+    subject: "Math",
+    rawText: "Valid question",
+    hasImage: false,
+    image: null,
+    status: "valid",
+    ...overrides,
+  });
+
+  test("revalidates an edited error question into a valid question", () => {
+    const before = makeQ({ answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const after = revalidateQuestions([
+      { ...before, answer: "A" },
+    ]);
+
+    expect(after[0].status).toBe("valid");
+    expect(after[0].statusReason).toBeUndefined();
+
+    const summary = buildSummary(after);
+    expect(summary.errorCount).toBe(0);
+    expect(summary.validCount).toBe(1);
+  });
+
+  test("revalidates a warning question after the warning is fixed", () => {
+    const before = makeQ({
+      options: [
+        { key: "A", text: "Opt A" },
+        { key: "B", text: "Opt B" },
+      ],
+      status: "warning",
+      statusReason: "Only 2 of 4 options provided",
+    });
+
+    const after = revalidateQuestions([
+      {
+        ...before,
+        options: [
+          { key: "A", text: "Opt A" },
+          { key: "B", text: "Opt B" },
+          { key: "C", text: "Opt C" },
+          { key: "D", text: "Opt D" },
+        ],
+      },
+    ]);
+
+    expect(after[0].status).toBe("valid");
+    expect(after[0].statusReason).toBeUndefined();
+
+    const summary = buildSummary(after);
+    expect(summary.warningCount).toBe(0);
+    expect(summary.validCount).toBe(1);
+  });
+
+  test("keeps the updated validation reason when an edit is still invalid", () => {
+    const before = makeQ({ answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const after = revalidateQuestions([
+      { ...before, answer: "A", year: null },
+    ]);
+
+    expect(after[0].status).toBe("error");
+    expect(after[0].statusReason).toBe("Missing year");
+  });
+
+  test("recalculates duplicate metadata after an edit removes the duplicate", () => {
+    const q1 = makeQ({ _clientId: "q1", text: "Question one", year: 2020 });
+    const q2 = makeQ({ _clientId: "q2", text: "Question one", year: 2020 });
+
+    const before = revalidateQuestions([q1, q2]);
+    expect(before[1].status).toBe("duplicate");
+    expect(before[1].possibleDuplicateOf).toBe("q1");
+
+    const after = revalidateQuestions([
+      { ...q1, text: "Question one updated" },
+      q2,
+    ]);
+
+    expect(after[0].status).toBe("valid");
+    expect(after[1].status).toBe("valid");
+    expect(after[1].possibleDuplicateOf).toBeUndefined();
+
+    const summary = buildSummary(after);
+    expect(summary.duplicateCount).toBe(0);
+  });
+
+  test("summary metrics are derived from the current question state", () => {
+    const q1 = makeQ({ _clientId: "q1", answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const q2 = makeQ({
+      _clientId: "q2",
+      text: "Different warning question",
+      options: [
+        { key: "A", text: "Opt A" },
+        { key: "B", text: "Opt B" },
+      ],
+      status: "warning",
+      statusReason: "Only 2 of 4 options provided",
+    });
+
+    const before = buildSummary(revalidateQuestions([q1, q2]));
+    expect(before.errorCount).toBe(1);
+    expect(before.warningCount).toBe(1);
+
+    const after = buildSummary(
+      revalidateQuestions([
+        { ...q1, answer: "A" },
+        {
+          ...q2,
+          text: "Different warning question",
+          options: [
+            { key: "A", text: "Opt A" },
+            { key: "B", text: "Opt B" },
+            { key: "C", text: "Opt C" },
+            { key: "D", text: "Opt D" },
+          ],
+        },
+      ]),
+    );
+    expect(after.errorCount).toBe(0);
+    expect(after.warningCount).toBe(0);
+    expect(after.validCount).toBe(2);
   });
 });
 

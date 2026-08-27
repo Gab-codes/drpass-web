@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Upload01Icon,
@@ -25,25 +26,35 @@ import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable"
 import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
 import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
 import { DuplicateReviewDialog } from "@/components/imports/DuplicateReviewDialog";
-import { parseFile } from "@/lib/import-parser";
+import {
+  buildSummary,
+  parseFile,
+  revalidateQuestions,
+} from "@/lib/import-parser";
 import { MOCK_QUESTIONS, MOCK_SUMMARY } from "@/lib/import-mock-data";
+import { importQuestions, questionKeys } from "@/api/questions";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type {
   ImportFormat,
   ImportStatus,
   ParsedQuestion,
   ParseSummary,
 } from "@/types/import-types";
+import type { ImportQuestionsResult } from "@/types/questions";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Imports() {
+  const queryClient = useQueryClient();
   // ── Upload state ──────────────────────────────────────────────────────────
   const [format, setFormat] = React.useState<ImportFormat>("xlsx");
   const [file, setFile] = React.useState<File | null>(null);
   const [status, setStatus] = React.useState<ImportStatus>("idle");
   const [parseError, setParseError] = React.useState<string | null>(null);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState(0);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [importResult, setImportResult] =
+    React.useState<ImportQuestionsResult | null>(null);
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [questions, setQuestions] = React.useState<ParsedQuestion[]>([]);
@@ -69,6 +80,16 @@ export default function Imports() {
     [questions, yearFilter, statusFilter, search],
   );
 
+  const activeQuestions = React.useMemo(
+    () => questions.filter((q) => q.duplicateResolution !== "remove"),
+    [questions],
+  );
+
+  const liveSummary = React.useMemo(() => {
+    if (!summary) return null;
+    return buildSummary(activeQuestions, summary.contextRowCount);
+  }, [activeQuestions, summary]);
+
   const duplicateMatch = React.useMemo(() => {
     if (!duplicateQuestion?.possibleDuplicateOf) return null;
     return (
@@ -78,24 +99,28 @@ export default function Imports() {
     );
   }, [duplicateQuestion, questions]);
 
-  const keptDuplicates = questions.filter(
+  const keptDuplicates = activeQuestions.filter(
     (q) => q.status === "duplicate" && q.duplicateResolution === "keep",
   ).length;
   const removedCount = questions.filter(
     (q) => q.duplicateResolution === "remove",
   ).length;
-  const canSubmit =
-    status === "preview" &&
-    summary !== null &&
-    summary.errorCount -
-      questions.filter(
-        (q) => q.status === "error" && q.duplicateResolution === "remove",
-      ).length <=
-      0;
+  const remainingErrors = liveSummary?.errorCount ?? 0;
 
-  const remainingErrors = questions.filter(
-    (q) => q.status === "error" && q.duplicateResolution !== "remove",
-  ).length;
+  const importMutation = useMutation({
+    mutationFn: importQuestions,
+    onSuccess: (result) => {
+      setSubmitError(null);
+      setImportResult(result);
+      setStatus("submitted");
+      queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
+    },
+    onError: (error) => {
+      setSubmitError(
+        getApiErrorMessage(error, "Unable to submit questions for import."),
+      );
+    },
+  });
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -156,9 +181,11 @@ export default function Imports() {
     setFile(null);
     setStatus("idle");
     setParseError(null);
+    setSubmitError(null);
     setProgress(0);
     setQuestions([]);
     setSummary(null);
+    setImportResult(null);
     setYearFilter("all");
     setStatusFilter("all");
     setSearch("");
@@ -169,74 +196,69 @@ export default function Imports() {
   }
 
   function handleSaveEdit(updated: ParsedQuestion) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === updated._clientId ? updated : q,
-      );
-      updateSummary(next);
-      return next;
-    });
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) => (q._clientId === updated._clientId ? updated : q)),
+      ),
+    );
     setEditQuestion(null);
   }
 
   function handleRemoveQuestion(clientId: string) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "remove" as const }
-          : q,
-      );
-      updateSummary(next);
-      return next;
-    });
-  }
-
-  function handleUndoRemove(clientId: string) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "keep" as const }
-          : q,
-      );
-      updateSummary(next);
-      return next;
-    });
-  }
-
-  function handleKeepDuplicate(clientId: string) {
     setQuestions((prev) =>
-      prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "keep" as const }
-          : q,
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "remove" as const }
+            : q,
+        ),
       ),
     );
   }
 
-  function updateSummary(currentQuestions?: ParsedQuestion[]) {
-    const qs = currentQuestions ?? questions;
-    const active = qs.filter((q) => q.duplicateResolution !== "remove");
-    setSummary((s) =>
-      s
-        ? {
-            ...s,
-            totalQuestions: active.length,
-            validCount: active.filter((q) => q.status === "valid").length,
-            warningCount: active.filter((q) => q.status === "warning").length,
-            errorCount: active.filter((q) => q.status === "error").length,
-            duplicateCount: active.filter((q) => q.status === "duplicate")
-              .length,
-          }
-        : s,
+  function handleUndoRemove(clientId: string) {
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "keep" as const }
+            : q,
+        ),
+      ),
+    );
+  }
+
+  function handleKeepDuplicate(clientId: string) {
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "keep" as const }
+            : q,
+        ),
+      ),
     );
   }
 
   async function handleSubmit() {
-    setIsSubmitting(true);
-    // Simulate submission delay — replace with TanStack Query mutation
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsSubmitting(false);
-    setStatus("submitted");
+    const selectedQuestions = activeQuestions.map((q) => ({
+        _clientId: q._clientId,
+        rowIndex: q.rowIndex,
+        year: q.year,
+        subject: q.subject,
+        text: q.text,
+        hasImage: q.hasImage,
+        options: q.options,
+        answer: q.answer,
+        status:
+          q.status === "duplicate" && q.duplicateResolution === "keep"
+            ? ("warning" as const)
+            : q.status,
+        statusReason: q.statusReason,
+      }));
+
+    setSubmitError(null);
+    importMutation.mutate({ questions: selectedQuestions });
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -280,15 +302,19 @@ export default function Imports() {
       {status === "processing" && <ProcessingSection progress={progress} />}
 
       {/* ── SUBMITTED ── */}
-      {status === "submitted" && (
-        <SubmittedSection onReset={handleReset} questions={questions} />
+      {status === "submitted" && importResult && (
+        <SubmittedSection
+          onReset={handleReset}
+          questions={questions}
+          result={importResult}
+        />
       )}
 
       {/* ── PREVIEW ── */}
-      {status === "preview" && summary && (
+      {status === "preview" && liveSummary && (
         <div className="space-y-5">
           {/* Summary stats */}
-          <ImportSummary summary={summary} filename={file?.name} />
+          <ImportSummary summary={liveSummary} filename={file?.name} />
 
           <Separator />
 
@@ -319,11 +345,12 @@ export default function Imports() {
 
           {/* Submission */}
           <SubmissionFooter
-            summary={summary}
+            summary={liveSummary}
             keptDuplicates={keptDuplicates}
             removedCount={removedCount}
             remainingErrors={remainingErrors}
-            isSubmitting={isSubmitting}
+            isSubmitting={importMutation.isPending}
+            submitError={submitError}
             onSubmit={handleSubmit}
           />
         </div>
@@ -529,6 +556,7 @@ function SubmissionFooter({
   removedCount,
   remainingErrors,
   isSubmitting,
+  submitError,
   onSubmit,
 }: {
   summary: ParseSummary;
@@ -536,12 +564,19 @@ function SubmissionFooter({
   removedCount: number;
   remainingErrors: number;
   isSubmitting: boolean;
+  submitError: string | null;
   onSubmit: () => void;
 }) {
   const activeCount = summary.totalQuestions;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-3">
+      {submitError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+          {submitError}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-4">
       {/* Summary line */}
       <div className="space-y-0.5 text-sm">
         <p className="font-medium">
@@ -584,6 +619,7 @@ function SubmissionFooter({
           </>
         )}
       </Button>
+      </div>
     </div>
   );
 }
@@ -593,9 +629,11 @@ function SubmissionFooter({
 function SubmittedSection({
   onReset,
   questions,
+  result,
 }: {
   onReset: () => void;
   questions: ParsedQuestion[];
+  result: ImportQuestionsResult;
 }) {
   const activeCount = questions.filter(
     (q) => q.duplicateResolution !== "remove",
@@ -612,18 +650,28 @@ function SubmittedSection({
       <div className="space-y-1">
         <h2 className="font-semibold">Import Submitted for Review</h2>
         <p className="text-sm text-muted-foreground">
-          {activeCount.toLocaleString()} question{activeCount === 1 ? "" : "s"}{" "}
-          have been submitted. They will remain unavailable to students until
-          approved and published by an administrator.
+          {result.created.toLocaleString()} question
+          {result.created === 1 ? "" : "s"} imported from{" "}
+          {activeCount.toLocaleString()} submitted. Pending questions remain
+          unavailable to students until approved.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {result.duplicates} duplicate{result.duplicates === 1 ? "" : "s"} ·{" "}
+          {result.unsupported} unsupported · {result.failed} failed
         </p>
       </div>
       <div className="flex gap-3">
         <Button onClick={onReset} variant="outline">
           Import Another File
         </Button>
-        <Button variant="ghost" render={<Link to="/admin/imports/imp_001" />}>
-          View Import →
-        </Button>
+        {result.importId && (
+          <Button
+            variant="ghost"
+            render={<Link to={`/admin/imports/${result.importId}`} />}
+          >
+            View Import →
+          </Button>
+        )}
       </div>
     </div>
   );
