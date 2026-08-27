@@ -43,6 +43,14 @@ function normaliseHeader(h: string): string {
   return aliases[normalized] ?? normalized;
 }
 
+const IMAGE_REFERENCE_RE =
+  /\b(diagram|figure|table|graph|chart|illustration|image)\b[^.?!]{0,40}\b(above|below)\b|\b(above|below)\b[^.?!]{0,40}\b(diagram|figure|table|graph|chart|illustration|image)\b/i;
+
+function detectPossibleImage(text: string): boolean {
+  if (!text) return false;
+  return IMAGE_REFERENCE_RE.test(text);
+}
+
 function toAnswerOption(v: unknown): AnswerOption | null {
   if (v == null || v === "") return null;
   const s = String(v).trim().toUpperCase();
@@ -302,6 +310,13 @@ function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
     return {
       status: "warning",
       statusReason: `Only ${nonEmptyOptions.length} of 4 options provided`,
+    };
+  }
+  if (q.hasImage) {
+    return {
+      status: "warning",
+      statusReason:
+        "Question text references a diagram/figure/image — please verify and attach",
     };
   }
   return { status: "valid" };
@@ -569,7 +584,7 @@ export async function parseXlsx(
             { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(record.correctAnswer),
-          hasImage: false,
+          hasImage: detectPossibleImage(cleanText),
           image: null,
         };
 
@@ -648,7 +663,7 @@ export async function parseXlsx(
             { key: "D", text: normOptions.D },
           ],
           answer: toAnswerOption(row.answer ?? row.correctAnswer),
-          hasImage: false,
+          hasImage: detectPossibleImage(cleanText),
           image: null,
         };
 
@@ -736,7 +751,7 @@ export async function parseJson(
         { key: "D", text: normOptions.D },
       ],
       answer: toAnswerOption(row.answer ?? row.correctAnswer),
-      hasImage: false,
+      hasImage: detectPossibleImage(cleanText),
       image: null,
     };
 
