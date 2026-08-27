@@ -8,7 +8,7 @@ import type {
   ImportQuestionsResult,
 } from "@/types/questions";
 
-const ADMIN_QUESTIONS_PATH = "/api/v1/questions/admin";
+const ADMIN_QUESTIONS_PATH = "/questions/admin";
 
 export const questionKeys = {
   all: ["questions"] as const,
