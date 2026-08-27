@@ -1,6 +1,10 @@
 .DS_Store
 .env
+.env.test
 /node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
 
 # React Router
 /.react-router/
