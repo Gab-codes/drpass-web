@@ -21,6 +21,7 @@ export default [
     route("admin/subjects", "routes/admin/subjects.tsx"),
     route("admin/questions", "routes/admin/questions/index.tsx"),
     route("admin/questions/new", "routes/admin/questions/new.tsx"),
+    route("admin/questions/:subject", "routes/admin/questions/subject.tsx"),
     route(
       "admin/questions/:questionId/edit",
       "routes/admin/questions/edit.tsx",
