@@ -14,12 +14,14 @@ export function QuestionForm({
   isPending,
   submitLabel,
   onSubmit,
+  onCancel,
 }: {
   register: UseFormRegister<QuestionFormInput>;
   errors: FieldErrors<QuestionFormInput>;
   isPending: boolean;
   submitLabel: string;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
+  onCancel?: () => void;
 }) {
   return (
     <form onSubmit={onSubmit} className="max-w-3xl space-y-4">
@@ -99,9 +101,15 @@ export function QuestionForm({
         <Button type="submit" disabled={isPending}>
           {isPending ? "Saving..." : submitLabel}
         </Button>
-        <Button variant="outline" render={<Link to="/admin/questions" />}>
-          Cancel
-        </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <Button variant="outline" render={<Link to="/admin/questions" />}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );

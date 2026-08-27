@@ -80,3 +80,7 @@ export interface AdminSubjectSummary {
   approved: number;
   rejected: number;
 }
+
+export interface ApproveAllPendingResult {
+  affected: number;
+}

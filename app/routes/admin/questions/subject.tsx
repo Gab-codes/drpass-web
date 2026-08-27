@@ -22,12 +22,33 @@ import {
   bulkAdminQuestionsAction,
   questionKeys,
   rejectQuestion,
+  getAdminSubjects,
+  approveAllPendingInSubject,
 } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { QuestionFormDialog } from "@/components/questions/QuestionFormDialog";
+import { toast } from "sonner";
 import type { AdminQuestion, AdminQuestionStatus } from "@/types/questions";
 
 const STATUS_OPTIONS: Array<AdminQuestionStatus | "all"> = [
@@ -66,7 +87,9 @@ export default function SubjectQuestions() {
   const pageSize = 50;
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [errorMsg, setErrorMsg] = React.useState("");
+  const [pendingActionId, setPendingActionId] = React.useState<string | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [approveAllOpen, setApproveAllOpen] = React.useState(false);
 
   const filters = React.useMemo(
     () => ({
@@ -79,6 +102,14 @@ export default function SubjectQuestions() {
     }),
     [subject, activeFilter, statusFilter, search, page, pageSize],
   );
+
+  const { data: subjectsData } = useQuery({
+    queryKey: questionKeys.adminSubjects(),
+    queryFn: getAdminSubjects,
+  });
+
+  const subjectSummary = subjectsData?.find((s) => s.subject === subject);
+  const pendingCount = subjectSummary?.pending ?? 0;
 
   const {
     data,
@@ -112,11 +143,7 @@ export default function SubjectQuestions() {
       return deactivateQuestion(id);
     },
     onSuccess: () => {
-      setErrorMsg("");
       queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
-    },
-    onError: (mutationError) => {
-      setErrorMsg(getApiErrorMessage(mutationError, "Unable to update question state."));
     },
   });
 
@@ -128,41 +155,83 @@ export default function SubjectQuestions() {
       });
     },
     onSuccess: () => {
-      setErrorMsg("");
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
     },
-    onError: (mutationError) => {
-      setErrorMsg(getApiErrorMessage(mutationError, "Unable to perform bulk action. Please check if your selection mixes valid and invalid statuses for this action."));
-    },
+  });
+
+  const approveAllMutation = useMutation({
+    mutationFn: (sub: string) => approveAllPendingInSubject(sub),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
+    }
   });
 
   const allSelected = questions.length > 0 && selectedIds.size === questions.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < questions.length;
 
-  function handleSelectAll() {
-    if (allSelected) {
+  function handleSelectAll(checked: boolean) {
+    if (!checked) {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(questions.map((q) => q.id)));
     }
   }
 
-  function handleSelect(id: string) {
+  function handleSelect(id: string, checked: boolean) {
     const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
+    if (checked) {
       newSet.add(id);
+    } else {
+      newSet.delete(id);
     }
     setSelectedIds(newSet);
   }
 
-  const handleBulk = (action: "approve" | "reject" | "activate" | "deactivate") => {
-    bulkMutation.mutate({ action });
+  const handleAction = (id: string, action: "approve" | "reject" | "activate" | "deactivate") => {
+    setPendingActionId(id);
+    
+    const messages = {
+      approve: { loading: "Approving question...", success: "Question approved", error: "Failed to approve question" },
+      reject: { loading: "Rejecting question...", success: "Question rejected", error: "Failed to reject question" },
+      activate: { loading: "Activating question...", success: "Question activated", error: "Failed to activate question" },
+      deactivate: { loading: "Deactivating question...", success: "Question deactivated", error: "Failed to deactivate question" },
+    };
+
+    toast.promise(lifecycleMutation.mutateAsync({ id, action }), {
+      loading: messages[action].loading,
+      success: messages[action].success,
+      error: (err) => getApiErrorMessage(err, messages[action].error),
+      finally: () => setPendingActionId(null),
+    });
   };
 
-  const isBusy = lifecycleMutation.isPending || bulkMutation.isPending;
+  const handleBulk = (action: "approve" | "reject" | "activate" | "deactivate") => {
+    const messages = {
+      approve: { loading: `Approving ${selectedIds.size} questions...`, success: `${selectedIds.size} questions approved`, error: "Failed to approve questions" },
+      reject: { loading: `Rejecting ${selectedIds.size} questions...`, success: `${selectedIds.size} questions rejected`, error: "Failed to reject questions" },
+      activate: { loading: `Activating ${selectedIds.size} questions...`, success: `${selectedIds.size} questions activated`, error: "Failed to activate questions" },
+      deactivate: { loading: `Deactivating ${selectedIds.size} questions...`, success: `${selectedIds.size} questions deactivated`, error: "Failed to deactivate questions" },
+    };
+
+    toast.promise(bulkMutation.mutateAsync({ action }), {
+      loading: messages[action].loading,
+      success: messages[action].success,
+      error: (err) => getApiErrorMessage(err, messages[action].error),
+    });
+  };
+
+  const handleApproveAll = () => {
+    if (!subject) return;
+    toast.promise(approveAllMutation.mutateAsync(subject), {
+      loading: `Approving all pending ${subject} questions...`,
+      success: (data) => `${data.affected} questions approved`,
+      error: (err) => getApiErrorMessage(err, "Failed to approve pending questions"),
+      finally: () => setApproveAllOpen(false),
+    });
+  };
+
+  const isBulkBusy = bulkMutation.isPending;
 
   return (
     <>
@@ -183,18 +252,47 @@ export default function SubjectQuestions() {
             Review, approve, and manage {subject} question entries.
           </p>
         </div>
-        <Button size="sm" render={<Link to="/admin/questions/new" />}>
-          <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
-          New Question
-        </Button>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <Dialog open={approveAllOpen} onOpenChange={setApproveAllOpen}>
+              <Button size="sm" variant="secondary" onClick={() => setApproveAllOpen(true)}>
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="mr-1 h-4 w-4" />
+                Approve all pending ({pendingCount})
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Approve All Pending</DialogTitle>
+                  <DialogDescription>
+                    Approve all {pendingCount} pending {subject} questions? This cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setApproveAllOpen(false)} disabled={approveAllMutation.isPending}>Cancel</Button>
+                  <Button onClick={handleApproveAll} disabled={approveAllMutation.isPending}>
+                    {approveAllMutation.isPending ? "Approving..." : "Approve All"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
+            New Question
+          </Button>
+        </div>
       </div>
+
+      <QuestionFormDialog 
+        open={createOpen} 
+        onOpenChange={setCreateOpen} 
+        defaultSubject={subject} 
+      />
 
       <Separator className="my-2" />
 
-      {(errorMsg || isError) && (
+      {isError && (
         <Alert variant="destructive" className="mb-3">
-          {errorMsg ||
-            getApiErrorMessage(error, "Unable to load admin questions.")}
+          {getApiErrorMessage(error, "Unable to load admin questions.")}
         </Alert>
       )}
 
@@ -208,7 +306,7 @@ export default function SubjectQuestions() {
               variant="outline"
               size="sm"
               onClick={() => handleBulk("approve")}
-              disabled={isBusy}
+              disabled={isBulkBusy}
             >
               <HugeiconsIcon icon={CheckmarkCircle01Icon} className="mr-1 h-4 w-4" />
               Approve
@@ -217,7 +315,7 @@ export default function SubjectQuestions() {
               variant="outline"
               size="sm"
               onClick={() => handleBulk("reject")}
-              disabled={isBusy}
+              disabled={isBulkBusy}
               className="text-destructive hover:text-destructive"
             >
               <HugeiconsIcon icon={Cancel01Icon} className="mr-1 h-4 w-4" />
@@ -227,7 +325,7 @@ export default function SubjectQuestions() {
               variant="outline"
               size="sm"
               onClick={() => handleBulk("activate")}
-              disabled={isBusy}
+              disabled={isBulkBusy}
             >
               <HugeiconsIcon icon={PlayIcon} className="mr-1 h-4 w-4" />
               Activate
@@ -236,7 +334,7 @@ export default function SubjectQuestions() {
               variant="outline"
               size="sm"
               onClick={() => handleBulk("deactivate")}
-              disabled={isBusy}
+              disabled={isBulkBusy}
             >
               <HugeiconsIcon icon={PauseIcon} className="mr-1 h-4 w-4" />
               Deactivate
@@ -255,31 +353,43 @@ export default function SubjectQuestions() {
             aria-label="Search questions"
             className="h-8 min-w-[220px] flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <select
+          <Select
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as AdminQuestionStatus | "all")
-            }
-            aria-label="Filter by review status"
-            className="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onValueChange={(val) => setStatusFilter(val as AdminQuestionStatus | "all")}
           >
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status === "all" ? "All statuses" : status}
-              </option>
-            ))}
-          </select>
-          <select
-            value={activeFilter}
-            onChange={(event) => setActiveFilter(event.target.value)}
-            aria-label="Filter by active state"
-            className="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="all">All activity</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
+            <SelectTrigger className="h-8 w-[140px]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status === "all" ? "All statuses" : status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex flex-col gap-1">
+            <Select
+              value={activeFilter}
+              onValueChange={(val) => { if (val) setActiveFilter(val) }}
+            >
+              <SelectTrigger className="h-8 w-[140px]">
+                <SelectValue placeholder="All activity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All activity</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        
+        {activeFilter === "true" && (
+          <p className="w-full text-xs text-muted-foreground mt-1">
+            Note: Deactivated questions will immediately leave this view.
+          </p>
+        )}
         
         {meta && meta.totalPages > 1 && (
           <div className="flex items-center gap-2 text-sm">
@@ -311,15 +421,12 @@ export default function SubjectQuestions() {
           <thead>
             <tr className="border-b border-border bg-muted/40">
               <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={allSelected}
-                  ref={(input) => {
-                    if (input) input.indeterminate = someSelected;
-                  }}
-                  onChange={handleSelectAll}
+                  indeterminate={someSelected && !allSelected}
+                  onCheckedChange={(c) => handleSelectAll(c as boolean)}
                   disabled={questions.length === 0}
-                  className="rounded border-gray-300"
+                  aria-label="Select page"
                 />
               </th>
               <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
@@ -344,21 +451,30 @@ export default function SubjectQuestions() {
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr>
-                <td
-                  className="px-3 py-8 text-center text-muted-foreground"
-                  colSpan={7}
-                >
-                  Loading questions...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-3 py-3"><Skeleton className="h-4 w-4" /></td>
+                  <td className="px-3 py-3">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-3 w-[100px]" />
+                    </div>
+                  </td>
+                  <td className="px-3 py-3"><Skeleton className="h-4 w-10" /></td>
+                  <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                  <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                  <td className="px-3 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-3 py-3 text-right"><Skeleton className="h-6 w-20 ml-auto" /></td>
+                </tr>
+              ))
             ) : questions.length === 0 ? (
               <tr>
                 <td
                   className="px-3 py-8 text-center text-muted-foreground"
                   colSpan={7}
                 >
-                  No questions match the current filters.
+                  <p>No questions match the current filters.</p>
+                  <Button variant="link" onClick={() => { setStatusFilter("all"); setActiveFilter("all"); setSearch(""); }} className="mt-2 h-auto p-0">Clear filters</Button>
                 </td>
               </tr>
             ) : (
@@ -367,11 +483,9 @@ export default function SubjectQuestions() {
                   key={question.id}
                   question={question}
                   selected={selectedIds.has(question.id)}
-                  onSelect={() => handleSelect(question.id)}
-                  busy={isBusy}
-                  onAction={(action) =>
-                    lifecycleMutation.mutate({ id: question.id, action })
-                  }
+                  onSelect={(c) => handleSelect(question.id, c as boolean)}
+                  busy={pendingActionId === question.id}
+                  onAction={(action) => handleAction(question.id, action)}
                 />
               ))
             )}
@@ -391,18 +505,17 @@ function QuestionRow({
 }: {
   question: AdminQuestion;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (checked: boolean) => void;
   busy: boolean;
   onAction: (action: "approve" | "reject" | "activate" | "deactivate") => void;
 }) {
   return (
     <tr className={`hover:bg-muted/30 ${selected ? "bg-muted/20" : ""}`}>
       <td className="px-3 py-2">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selected}
-          onChange={onSelect}
-          className="rounded border-gray-300"
+          onCheckedChange={onSelect}
+          aria-label="Select row"
         />
       </td>
       <td className="max-w-[34rem] px-3 py-2">

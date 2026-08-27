@@ -7,6 +7,7 @@ import type {
   ImportQuestionsInput,
   ImportQuestionsResult,
   AdminSubjectSummary,
+  ApproveAllPendingResult,
 } from "@/types/questions";
 const ADMIN_QUESTIONS_PATH = "/questions/admin";
 export const questionKeys = {
@@ -104,6 +105,14 @@ export async function activateQuestion(id: string) {
 export async function deactivateQuestion(id: string) {
   const response = await apiClient.post<AdminQuestion>(
     `${ADMIN_QUESTIONS_PATH}/${id}/deactivate`,
+  );
+  return response.data;
+}
+
+export async function approveAllPendingInSubject(subject: string) {
+  const response = await apiClient.post<ApproveAllPendingResult>(
+    `${ADMIN_QUESTIONS_PATH}/approve-all-pending`,
+    { subject }
   );
   return response.data;
 }
