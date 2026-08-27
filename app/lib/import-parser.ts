@@ -345,6 +345,71 @@ export function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] 
   });
 }
 
+export function revalidateQuestions(
+  questions: ParsedQuestion[],
+): ParsedQuestion[] {
+  const revalidated = questions.map((q) => {
+    const {
+      _clientId,
+      rowIndex,
+      questionNumber,
+      year,
+      subject,
+      text,
+      rawText,
+      options,
+      answer,
+      hasImage,
+      image,
+      isEdited,
+    } = q;
+
+    const base: Omit<
+      ParsedQuestion,
+      "status" | "statusReason" | "possibleDuplicateOf" | "duplicateResolution"
+    > = {
+      _clientId,
+      rowIndex,
+      questionNumber,
+      year,
+      subject,
+      text,
+      rawText,
+      options,
+      answer,
+      hasImage,
+      image,
+      isEdited,
+    };
+
+    const { status, statusReason } = detectStatus(base);
+
+    return {
+      ...q,
+      status,
+      statusReason,
+      possibleDuplicateOf: undefined,
+    };
+  });
+
+  const activeQuestions = revalidated.filter(
+    (q) => q.duplicateResolution !== "remove",
+  );
+  const withDuplicates = detectDuplicates(activeQuestions);
+  const duplicateById = new Map(
+    withDuplicates.map((question) => [question._clientId, question]),
+  );
+
+  return revalidated.map((question) => {
+    const duplicate = duplicateById.get(question._clientId);
+    if (!duplicate) return question;
+    return {
+      ...question,
+      ...duplicate,
+    };
+  });
+}
+
 export function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
   const BOUNDARY_REGEX = /(?:^|\s+)(?:Option\s+)?([A-D])\s*(?:\.|\)|-|:)\s*/gi;
 

@@ -26,7 +26,11 @@ import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable"
 import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
 import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
 import { DuplicateReviewDialog } from "@/components/imports/DuplicateReviewDialog";
-import { parseFile } from "@/lib/import-parser";
+import {
+  buildSummary,
+  parseFile,
+  revalidateQuestions,
+} from "@/lib/import-parser";
 import { MOCK_QUESTIONS, MOCK_SUMMARY } from "@/lib/import-mock-data";
 import { importQuestions, questionKeys } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -76,6 +80,16 @@ export default function Imports() {
     [questions, yearFilter, statusFilter, search],
   );
 
+  const activeQuestions = React.useMemo(
+    () => questions.filter((q) => q.duplicateResolution !== "remove"),
+    [questions],
+  );
+
+  const liveSummary = React.useMemo(() => {
+    if (!summary) return null;
+    return buildSummary(activeQuestions, summary.contextRowCount);
+  }, [activeQuestions, summary]);
+
   const duplicateMatch = React.useMemo(() => {
     if (!duplicateQuestion?.possibleDuplicateOf) return null;
     return (
@@ -85,24 +99,13 @@ export default function Imports() {
     );
   }, [duplicateQuestion, questions]);
 
-  const keptDuplicates = questions.filter(
+  const keptDuplicates = activeQuestions.filter(
     (q) => q.status === "duplicate" && q.duplicateResolution === "keep",
   ).length;
   const removedCount = questions.filter(
     (q) => q.duplicateResolution === "remove",
   ).length;
-  const canSubmit =
-    status === "preview" &&
-    summary !== null &&
-    summary.errorCount -
-      questions.filter(
-        (q) => q.status === "error" && q.duplicateResolution === "remove",
-      ).length <=
-      0;
-
-  const remainingErrors = questions.filter(
-    (q) => q.status === "error" && q.duplicateResolution !== "remove",
-  ).length;
+  const remainingErrors = liveSummary?.errorCount ?? 0;
 
   const importMutation = useMutation({
     mutationFn: importQuestions,
@@ -193,72 +196,52 @@ export default function Imports() {
   }
 
   function handleSaveEdit(updated: ParsedQuestion) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === updated._clientId ? updated : q,
-      );
-      updateSummary(next);
-      return next;
-    });
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) => (q._clientId === updated._clientId ? updated : q)),
+      ),
+    );
     setEditQuestion(null);
   }
 
   function handleRemoveQuestion(clientId: string) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "remove" as const }
-          : q,
-      );
-      updateSummary(next);
-      return next;
-    });
-  }
-
-  function handleUndoRemove(clientId: string) {
-    setQuestions((prev) => {
-      const next = prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "keep" as const }
-          : q,
-      );
-      updateSummary(next);
-      return next;
-    });
-  }
-
-  function handleKeepDuplicate(clientId: string) {
     setQuestions((prev) =>
-      prev.map((q) =>
-        q._clientId === clientId
-          ? { ...q, duplicateResolution: "keep" as const }
-          : q,
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "remove" as const }
+            : q,
+        ),
       ),
     );
   }
 
-  function updateSummary(currentQuestions?: ParsedQuestion[]) {
-    const qs = currentQuestions ?? questions;
-    const active = qs.filter((q) => q.duplicateResolution !== "remove");
-    setSummary((s) =>
-      s
-        ? {
-            ...s,
-            totalQuestions: active.length,
-            validCount: active.filter((q) => q.status === "valid").length,
-            warningCount: active.filter((q) => q.status === "warning").length,
-            errorCount: active.filter((q) => q.status === "error").length,
-            duplicateCount: active.filter((q) => q.status === "duplicate")
-              .length,
-          }
-        : s,
+  function handleUndoRemove(clientId: string) {
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "keep" as const }
+            : q,
+        ),
+      ),
+    );
+  }
+
+  function handleKeepDuplicate(clientId: string) {
+    setQuestions((prev) =>
+      revalidateQuestions(
+        prev.map((q) =>
+          q._clientId === clientId
+            ? { ...q, duplicateResolution: "keep" as const }
+            : q,
+        ),
+      ),
     );
   }
 
   async function handleSubmit() {
-    const selectedQuestions = questions
-      .filter((q) => q.duplicateResolution !== "remove")
-      .map((q) => ({
+    const selectedQuestions = activeQuestions.map((q) => ({
         _clientId: q._clientId,
         rowIndex: q.rowIndex,
         year: q.year,
@@ -328,10 +311,10 @@ export default function Imports() {
       )}
 
       {/* ── PREVIEW ── */}
-      {status === "preview" && summary && (
+      {status === "preview" && liveSummary && (
         <div className="space-y-5">
           {/* Summary stats */}
-          <ImportSummary summary={summary} filename={file?.name} />
+          <ImportSummary summary={liveSummary} filename={file?.name} />
 
           <Separator />
 
@@ -362,7 +345,7 @@ export default function Imports() {
 
           {/* Submission */}
           <SubmissionFooter
-            summary={summary}
+            summary={liveSummary}
             keptDuplicates={keptDuplicates}
             removedCount={removedCount}
             remainingErrors={remainingErrors}
