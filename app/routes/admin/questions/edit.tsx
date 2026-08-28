@@ -6,13 +6,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
-import { getAdminQuestions, questionKeys, updateQuestion } from "@/api/questions";
+import {
+  getAdminQuestion,
+  questionKeys,
+  updateQuestion,
+  activateQuestion,
+  deactivateQuestion,
+} from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { QuestionForm } from "@/components/questions/QuestionForm";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   questionFormSchema,
   type QuestionFormInput,
@@ -25,12 +33,11 @@ export default function EditQuestion() {
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = React.useState("");
 
-  const { data: questions = [], isLoading, isError, error } = useQuery({
-    queryKey: questionKeys.adminList(),
-    queryFn: () => getAdminQuestions(),
+  const { data: question, isLoading, isError, error } = useQuery({
+    queryKey: questionKeys.adminDetail(questionId!),
+    queryFn: () => getAdminQuestion(questionId!),
+    enabled: !!questionId,
   });
-
-  const question = questions.find((item) => item.id === questionId);
 
   const {
     register,
@@ -75,6 +82,21 @@ export default function EditQuestion() {
     onError: (mutationError) => {
       setErrorMsg(
         getApiErrorMessage(mutationError, "Unable to update question."),
+      );
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async (isActive: boolean) => {
+      if (isActive) return activateQuestion(questionId ?? "");
+      return deactivateQuestion(questionId ?? "");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
+    },
+    onError: (mutationError) => {
+      setErrorMsg(
+        getApiErrorMessage(mutationError, "Unable to change active state."),
       );
     },
   });
@@ -129,13 +151,35 @@ export default function EditQuestion() {
           Question <span className="font-mono">{questionId}</span> was not found.
         </p>
       ) : (
-        <QuestionForm
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          submitLabel="Save Changes"
-          onSubmit={handleSubmit(onSubmit)}
-        />
+        <div className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="active-mode"
+              checked={question.isActive}
+              onCheckedChange={(checked) => {
+                setErrorMsg("");
+                toggleMutation.mutate(checked);
+              }}
+              disabled={question.status !== "approved" || toggleMutation.isPending}
+            />
+            <Label htmlFor="active-mode" className="flex flex-col">
+              <span>Active State</span>
+              <span className="font-normal text-muted-foreground text-xs">
+                {question.status !== "approved" 
+                  ? "Only approved questions can be activated" 
+                  : "Turn on to make this question available in exams"}
+              </span>
+            </Label>
+          </div>
+
+          <QuestionForm
+            register={register}
+            errors={errors}
+            isPending={isPending}
+            submitLabel="Save Changes"
+            onSubmit={handleSubmit(onSubmit)}
+          />
+        </div>
       )}
     </>
   );

@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Toaster } from "sonner";
 
 export default function AdminLayout() {
   const { data: user, isLoading, isError } = useCurrentUser();
@@ -43,6 +44,7 @@ export default function AdminLayout() {
 
   return (
     <SidebarProvider>
+      <Toaster richColors position="top-right" />
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-50 bg-background/50 backdrop-blur-sm transition-colors">

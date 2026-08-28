@@ -68,4 +68,19 @@ export interface AdminQuestionFilters {
   importId?: string;
   subject?: string;
   isActive?: boolean;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminSubjectSummary {
+  subject: string;
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
+export interface ApproveAllPendingResult {
+  affected: number;
 }
