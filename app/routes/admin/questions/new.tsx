@@ -10,7 +10,7 @@ import { createQuestion, questionKeys } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { QuestionForm } from "@/components/questions/QuestionForm";
+import { QuestionForm } from "@/components/admin/questions/QuestionForm";
 import { Separator } from "@/components/ui/separator";
 import {
   questionFormSchema,

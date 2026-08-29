@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup } from "@playwright/test";
 
 /**
  * Provisions the dedicated E2E user before the browser tests run.
@@ -14,7 +14,8 @@ const PASSWORD = process.env.E2E_TEST_USER_PASSWORD;
 const NAME = process.env.E2E_TEST_USER_NAME ?? "E2E Test User";
 
 setup("ensure E2E test user exists", async ({ request }) => {
-  const baseURL = process.env.VITE_AUTH_API_URL ?? "http://localhost:8080/api/auth";
+  const baseURL =
+    process.env.VITE_AUTH_API_URL ?? "http://localhost:8080/api/auth";
 
   const response = await request.post(`${baseURL}/sign-up/email`, {
     data: { name: NAME, email: EMAIL, password: PASSWORD },

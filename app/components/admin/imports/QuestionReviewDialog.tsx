@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { ParsedQuestion, AnswerOption } from "@/types/import-types";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
-import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
+import { QuestionEditDialog } from "@/components/admin/imports/QuestionEditDialog";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";

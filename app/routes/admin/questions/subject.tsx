@@ -47,7 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { QuestionFormDialog } from "@/components/questions/QuestionFormDialog";
+import { QuestionFormDialog } from "@/components/admin/questions/QuestionFormDialog";
 import { toast } from "sonner";
 import type { AdminQuestion, AdminQuestionStatus } from "@/types/questions";
 
@@ -79,15 +79,19 @@ function truncate(text: string) {
 export default function SubjectQuestions() {
   const { subject } = useParams<{ subject: string }>();
   const queryClient = useQueryClient();
-  
-  const [statusFilter, setStatusFilter] = React.useState<AdminQuestionStatus | "all">("all");
+
+  const [statusFilter, setStatusFilter] = React.useState<
+    AdminQuestionStatus | "all"
+  >("all");
   const [activeFilter, setActiveFilter] = React.useState("all");
   const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
   const pageSize = 50;
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [pendingActionId, setPendingActionId] = React.useState<string | null>(null);
+  const [pendingActionId, setPendingActionId] = React.useState<string | null>(
+    null,
+  );
   const [createOpen, setCreateOpen] = React.useState(false);
   const [approveAllOpen, setApproveAllOpen] = React.useState(false);
 
@@ -111,12 +115,7 @@ export default function SubjectQuestions() {
   const subjectSummary = subjectsData?.find((s) => s.subject === subject);
   const pendingCount = subjectSummary?.pending ?? 0;
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: questionKeys.adminList(filters),
     queryFn: () => getAdminQuestions(filters),
   });
@@ -129,14 +128,20 @@ export default function SubjectQuestions() {
     setPage(1);
     setSelectedIds(new Set());
   }, [statusFilter, activeFilter, search]);
-  
+
   // Clear selection when page changes
   React.useEffect(() => {
     setSelectedIds(new Set());
   }, [page]);
 
   const lifecycleMutation = useMutation({
-    mutationFn: ({ action, id }: { action: "approve" | "reject" | "activate" | "deactivate"; id: string }) => {
+    mutationFn: ({
+      action,
+      id,
+    }: {
+      action: "approve" | "reject" | "activate" | "deactivate";
+      id: string;
+    }) => {
       if (action === "approve") return approveQuestion(id);
       if (action === "reject") return rejectQuestion(id);
       if (action === "activate") return activateQuestion(id);
@@ -148,7 +153,11 @@ export default function SubjectQuestions() {
   });
 
   const bulkMutation = useMutation({
-    mutationFn: ({ action }: { action: "approve" | "reject" | "activate" | "deactivate" }) => {
+    mutationFn: ({
+      action,
+    }: {
+      action: "approve" | "reject" | "activate" | "deactivate";
+    }) => {
       return bulkAdminQuestionsAction({
         questionIds: Array.from(selectedIds),
         action,
@@ -164,11 +173,13 @@ export default function SubjectQuestions() {
     mutationFn: (sub: string) => approveAllPendingInSubject(sub),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
-    }
+    },
   });
 
-  const allSelected = questions.length > 0 && selectedIds.size === questions.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < questions.length;
+  const allSelected =
+    questions.length > 0 && selectedIds.size === questions.length;
+  const someSelected =
+    selectedIds.size > 0 && selectedIds.size < questions.length;
 
   function handleSelectAll(checked: boolean) {
     if (!checked) {
@@ -188,14 +199,33 @@ export default function SubjectQuestions() {
     setSelectedIds(newSet);
   }
 
-  const handleAction = (id: string, action: "approve" | "reject" | "activate" | "deactivate") => {
+  const handleAction = (
+    id: string,
+    action: "approve" | "reject" | "activate" | "deactivate",
+  ) => {
     setPendingActionId(id);
-    
+
     const messages = {
-      approve: { loading: "Approving question...", success: "Question approved", error: "Failed to approve question" },
-      reject: { loading: "Rejecting question...", success: "Question rejected", error: "Failed to reject question" },
-      activate: { loading: "Activating question...", success: "Question activated", error: "Failed to activate question" },
-      deactivate: { loading: "Deactivating question...", success: "Question deactivated", error: "Failed to deactivate question" },
+      approve: {
+        loading: "Approving question...",
+        success: "Question approved",
+        error: "Failed to approve question",
+      },
+      reject: {
+        loading: "Rejecting question...",
+        success: "Question rejected",
+        error: "Failed to reject question",
+      },
+      activate: {
+        loading: "Activating question...",
+        success: "Question activated",
+        error: "Failed to activate question",
+      },
+      deactivate: {
+        loading: "Deactivating question...",
+        success: "Question deactivated",
+        error: "Failed to deactivate question",
+      },
     };
 
     toast.promise(lifecycleMutation.mutateAsync({ id, action }), {
@@ -206,12 +236,30 @@ export default function SubjectQuestions() {
     });
   };
 
-  const handleBulk = (action: "approve" | "reject" | "activate" | "deactivate") => {
+  const handleBulk = (
+    action: "approve" | "reject" | "activate" | "deactivate",
+  ) => {
     const messages = {
-      approve: { loading: `Approving ${selectedIds.size} questions...`, success: `${selectedIds.size} questions approved`, error: "Failed to approve questions" },
-      reject: { loading: `Rejecting ${selectedIds.size} questions...`, success: `${selectedIds.size} questions rejected`, error: "Failed to reject questions" },
-      activate: { loading: `Activating ${selectedIds.size} questions...`, success: `${selectedIds.size} questions activated`, error: "Failed to activate questions" },
-      deactivate: { loading: `Deactivating ${selectedIds.size} questions...`, success: `${selectedIds.size} questions deactivated`, error: "Failed to deactivate questions" },
+      approve: {
+        loading: `Approving ${selectedIds.size} questions...`,
+        success: `${selectedIds.size} questions approved`,
+        error: "Failed to approve questions",
+      },
+      reject: {
+        loading: `Rejecting ${selectedIds.size} questions...`,
+        success: `${selectedIds.size} questions rejected`,
+        error: "Failed to reject questions",
+      },
+      activate: {
+        loading: `Activating ${selectedIds.size} questions...`,
+        success: `${selectedIds.size} questions activated`,
+        error: "Failed to activate questions",
+      },
+      deactivate: {
+        loading: `Deactivating ${selectedIds.size} questions...`,
+        success: `${selectedIds.size} questions deactivated`,
+        error: "Failed to deactivate questions",
+      },
     };
 
     toast.promise(bulkMutation.mutateAsync({ action }), {
@@ -226,7 +274,8 @@ export default function SubjectQuestions() {
     toast.promise(approveAllMutation.mutateAsync(subject), {
       loading: `Approving all pending ${subject} questions...`,
       success: (data) => `${data.affected} questions approved`,
-      error: (err) => getApiErrorMessage(err, "Failed to approve pending questions"),
+      error: (err) =>
+        getApiErrorMessage(err, "Failed to approve pending questions"),
       finally: () => setApproveAllOpen(false),
     });
   };
@@ -255,21 +304,40 @@ export default function SubjectQuestions() {
         <div className="flex items-center gap-2">
           {pendingCount > 0 && (
             <Dialog open={approveAllOpen} onOpenChange={setApproveAllOpen}>
-              <Button size="sm" variant="secondary" onClick={() => setApproveAllOpen(true)}>
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="mr-1 h-4 w-4" />
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setApproveAllOpen(true)}
+              >
+                <HugeiconsIcon
+                  icon={CheckmarkCircle01Icon}
+                  className="mr-1 h-4 w-4"
+                />
                 Approve all pending ({pendingCount})
               </Button>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Approve All Pending</DialogTitle>
                   <DialogDescription>
-                    Approve all {pendingCount} pending {subject} questions? This cannot be undone.
+                    Approve all {pendingCount} pending {subject} questions? This
+                    cannot be undone.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setApproveAllOpen(false)} disabled={approveAllMutation.isPending}>Cancel</Button>
-                  <Button onClick={handleApproveAll} disabled={approveAllMutation.isPending}>
-                    {approveAllMutation.isPending ? "Approving..." : "Approve All"}
+                  <Button
+                    variant="outline"
+                    onClick={() => setApproveAllOpen(false)}
+                    disabled={approveAllMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleApproveAll}
+                    disabled={approveAllMutation.isPending}
+                  >
+                    {approveAllMutation.isPending
+                      ? "Approving..."
+                      : "Approve All"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -282,10 +350,10 @@ export default function SubjectQuestions() {
         </div>
       </div>
 
-      <QuestionFormDialog 
-        open={createOpen} 
-        onOpenChange={setCreateOpen} 
-        defaultSubject={subject} 
+      <QuestionFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        defaultSubject={subject}
       />
 
       <Separator className="my-2" />
@@ -299,7 +367,8 @@ export default function SubjectQuestions() {
       {selectedIds.size > 0 && (
         <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2">
           <span className="text-sm font-medium text-primary">
-            {selectedIds.size} question{selectedIds.size > 1 ? "s" : ""} selected
+            {selectedIds.size} question{selectedIds.size > 1 ? "s" : ""}{" "}
+            selected
           </span>
           <div className="flex gap-2">
             <Button
@@ -308,7 +377,10 @@ export default function SubjectQuestions() {
               onClick={() => handleBulk("approve")}
               disabled={isBulkBusy}
             >
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="mr-1 h-4 w-4" />
+              <HugeiconsIcon
+                icon={CheckmarkCircle01Icon}
+                className="mr-1 h-4 w-4"
+              />
               Approve
             </Button>
             <Button
@@ -355,7 +427,9 @@ export default function SubjectQuestions() {
           />
           <Select
             value={statusFilter}
-            onValueChange={(val) => setStatusFilter(val as AdminQuestionStatus | "all")}
+            onValueChange={(val) =>
+              setStatusFilter(val as AdminQuestionStatus | "all")
+            }
           >
             <SelectTrigger className="h-8 w-[140px]">
               <SelectValue placeholder="All statuses" />
@@ -371,7 +445,9 @@ export default function SubjectQuestions() {
           <div className="flex flex-col gap-1">
             <Select
               value={activeFilter}
-              onValueChange={(val) => { if (val) setActiveFilter(val) }}
+              onValueChange={(val) => {
+                if (val) setActiveFilter(val);
+              }}
             >
               <SelectTrigger className="h-8 w-[140px]">
                 <SelectValue placeholder="All activity" />
@@ -384,13 +460,13 @@ export default function SubjectQuestions() {
             </Select>
           </div>
         </div>
-        
+
         {activeFilter === "true" && (
           <p className="w-full text-xs text-muted-foreground mt-1">
             Note: Deactivated questions will immediately leave this view.
           </p>
         )}
-        
+
         {meta && meta.totalPages > 1 && (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">
@@ -399,7 +475,7 @@ export default function SubjectQuestions() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1 || isLoading}
             >
               Prev
@@ -407,7 +483,7 @@ export default function SubjectQuestions() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
               disabled={page === meta.totalPages || isLoading}
             >
               Next
@@ -453,18 +529,30 @@ export default function SubjectQuestions() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-4" /></td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-4 w-4" />
+                  </td>
                   <td className="px-3 py-3">
                     <div className="space-y-2">
                       <Skeleton className="h-4 w-[250px]" />
                       <Skeleton className="h-3 w-[100px]" />
                     </div>
                   </td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-10" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
-                  <td className="px-3 py-3"><Skeleton className="h-4 w-24" /></td>
-                  <td className="px-3 py-3 text-right"><Skeleton className="h-6 w-20 ml-auto" /></td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-4 w-10" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <Skeleton className="h-4 w-24" />
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <Skeleton className="h-6 w-20 ml-auto" />
+                  </td>
                 </tr>
               ))
             ) : questions.length === 0 ? (
@@ -474,7 +562,17 @@ export default function SubjectQuestions() {
                   colSpan={7}
                 >
                   <p>No questions match the current filters.</p>
-                  <Button variant="link" onClick={() => { setStatusFilter("all"); setActiveFilter("all"); setSearch(""); }} className="mt-2 h-auto p-0">Clear filters</Button>
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setActiveFilter("all");
+                      setSearch("");
+                    }}
+                    className="mt-2 h-auto p-0"
+                  >
+                    Clear filters
+                  </Button>
                 </td>
               </tr>
             ) : (
