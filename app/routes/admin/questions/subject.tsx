@@ -4,13 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
-  AlertCircleIcon,
   CheckmarkCircle01Icon,
-  Edit01Icon,
-  PauseIcon,
-  PlayIcon,
-  ViewIcon,
-  Cancel01Icon,
   ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons";
 
@@ -26,18 +20,10 @@ import {
   approveAllPendingInSubject,
 } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -48,33 +34,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { QuestionFormDialog } from "@/components/admin/questions/QuestionFormDialog";
+import { QuestionRow } from "@/components/admin/questions/QuestionRow";
+import { BulkActionBar } from "@/components/admin/questions/BulkActionBar";
+import { QuestionFilters } from "@/components/admin/questions/QuestionFilters";
 import { toast } from "sonner";
 import type { AdminQuestion, AdminQuestionStatus } from "@/types/questions";
-
-const STATUS_OPTIONS: Array<AdminQuestionStatus | "all"> = [
-  "all",
-  "pending",
-  "approved",
-  "rejected",
-];
-
-function statusVariant(status: AdminQuestionStatus) {
-  if (status === "approved") return "default";
-  if (status === "rejected") return "destructive";
-  return "secondary";
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-NG", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function truncate(text: string) {
-  return text.length > 110 ? `${text.slice(0, 110)}...` : text;
-}
 
 export default function SubjectQuestions() {
   const { subject } = useParams<{ subject: string }>();
@@ -123,13 +87,11 @@ export default function SubjectQuestions() {
   const questions = data?.data ?? [];
   const meta = data?.meta;
 
-  // Reset page and selection when filters change
   React.useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
   }, [statusFilter, activeFilter, search]);
 
-  // Clear selection when page changes
   React.useEffect(() => {
     setSelectedIds(new Set());
   }, [page]);
@@ -365,132 +327,29 @@ export default function SubjectQuestions() {
       )}
 
       {selectedIds.size > 0 && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2">
-          <span className="text-sm font-medium text-primary">
-            {selectedIds.size} question{selectedIds.size > 1 ? "s" : ""}{" "}
-            selected
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulk("approve")}
-              disabled={isBulkBusy}
-            >
-              <HugeiconsIcon
-                icon={CheckmarkCircle01Icon}
-                className="mr-1 h-4 w-4"
-              />
-              Approve
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulk("reject")}
-              disabled={isBulkBusy}
-              className="text-destructive hover:text-destructive"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="mr-1 h-4 w-4" />
-              Reject
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulk("activate")}
-              disabled={isBulkBusy}
-            >
-              <HugeiconsIcon icon={PlayIcon} className="mr-1 h-4 w-4" />
-              Activate
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulk("deactivate")}
-              disabled={isBulkBusy}
-            >
-              <HugeiconsIcon icon={PauseIcon} className="mr-1 h-4 w-4" />
-              Deactivate
-            </Button>
-          </div>
-        </div>
+        <BulkActionBar
+          count={selectedIds.size}
+          isBusy={isBulkBusy}
+          onBulk={handleBulk}
+        />
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search questions..."
-            aria-label="Search questions"
-            className="h-8 min-w-[220px] flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <Select
-            value={statusFilter}
-            onValueChange={(val) =>
-              setStatusFilter(val as AdminQuestionStatus | "all")
-            }
-          >
-            <SelectTrigger className="h-8 w-[140px]">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status === "all" ? "All statuses" : status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex flex-col gap-1">
-            <Select
-              value={activeFilter}
-              onValueChange={(val) => {
-                if (val) setActiveFilter(val);
-              }}
-            >
-              <SelectTrigger className="h-8 w-[140px]">
-                <SelectValue placeholder="All activity" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All activity</SelectItem>
-                <SelectItem value="true">Active</SelectItem>
-                <SelectItem value="false">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {activeFilter === "true" && (
-          <p className="w-full text-xs text-muted-foreground mt-1">
-            Note: Deactivated questions will immediately leave this view.
-          </p>
-        )}
-
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">
-              Page {meta.page} of {meta.totalPages} ({meta.total} total)
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || isLoading}
-            >
-              Prev
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={page === meta.totalPages || isLoading}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-      </div>
+      <QuestionFilters
+        search={search}
+        statusFilter={statusFilter}
+        activeFilter={activeFilter}
+        page={page}
+        totalPages={meta?.totalPages ?? 1}
+        total={meta?.total ?? 0}
+        isLoading={isLoading}
+        onSearchChange={setSearch}
+        onStatusChange={setStatusFilter}
+        onActiveChange={setActiveFilter}
+        onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
+        onNextPage={() =>
+          setPage((p) => Math.min(meta?.totalPages ?? 1, p + 1))
+        }
+      />
 
       <div className="mt-3 overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
@@ -534,8 +393,8 @@ export default function SubjectQuestions() {
                   </td>
                   <td className="px-3 py-3">
                     <div className="space-y-2">
-                      <Skeleton className="h-4 w-[250px]" />
-                      <Skeleton className="h-3 w-[100px]" />
+                      <Skeleton className="h-4 w-62.5" />
+                      <Skeleton className="h-3 w-25" />
                     </div>
                   </td>
                   <td className="px-3 py-3">
@@ -591,123 +450,5 @@ export default function SubjectQuestions() {
         </table>
       </div>
     </>
-  );
-}
-
-function QuestionRow({
-  question,
-  selected,
-  onSelect,
-  busy,
-  onAction,
-}: {
-  question: AdminQuestion;
-  selected: boolean;
-  onSelect: (checked: boolean) => void;
-  busy: boolean;
-  onAction: (action: "approve" | "reject" | "activate" | "deactivate") => void;
-}) {
-  return (
-    <tr className={`hover:bg-muted/30 ${selected ? "bg-muted/20" : ""}`}>
-      <td className="px-3 py-2">
-        <Checkbox
-          checked={selected}
-          onCheckedChange={onSelect}
-          aria-label="Select row"
-        />
-      </td>
-      <td className="max-w-[34rem] px-3 py-2">
-        <div className="space-y-0.5">
-          <p className="font-medium leading-snug">{truncate(question.text)}</p>
-          <p className="text-xs text-muted-foreground">{question.subject}</p>
-        </div>
-      </td>
-      <td className="px-3 py-2 text-xs font-medium tabular-nums">
-        {question.year}
-      </td>
-      <td className="px-3 py-2">
-        <Badge variant={statusVariant(question.status)}>
-          {question.status}
-        </Badge>
-      </td>
-      <td className="px-3 py-2">
-        <Badge variant={question.isActive ? "default" : "outline"}>
-          {question.isActive ? "active" : "inactive"}
-        </Badge>
-      </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
-        {formatDate(question.createdAt)}
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            render={<Link to={`/admin/questions/${question.id}/edit`} />}
-            aria-label="View and edit question"
-            title="View and edit"
-          >
-            <HugeiconsIcon
-              icon={question.status === "pending" ? ViewIcon : Edit01Icon}
-            />
-          </Button>
-          {question.status !== "approved" && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onAction("approve")}
-              disabled={busy}
-              aria-label="Approve question"
-              title="Approve"
-            >
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} />
-            </Button>
-          )}
-          {question.status !== "rejected" && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onAction("reject")}
-              disabled={busy}
-              aria-label="Reject question"
-              title="Reject"
-              className="text-destructive hover:text-destructive"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} />
-            </Button>
-          )}
-          {question.status === "approved" &&
-            (question.isActive ? (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onAction("deactivate")}
-                disabled={busy}
-                aria-label="Deactivate question"
-                title="Deactivate"
-              >
-                <HugeiconsIcon icon={PauseIcon} />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onAction("activate")}
-                disabled={busy}
-                aria-label="Activate question"
-                title="Activate"
-              >
-                <HugeiconsIcon icon={PlayIcon} />
-              </Button>
-            ))}
-          {question.status !== "approved" && question.status !== "rejected" && (
-            <HugeiconsIcon
-              icon={AlertCircleIcon}
-              className="mx-1 h-3.5 w-3.5 text-muted-foreground"
-            />
-          )}
-        </div>
-      </td>
-    </tr>
   );
 }
