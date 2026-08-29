@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -63,7 +63,7 @@ export default function NewQuestion() {
         variant="ghost"
         size="sm"
         className="-ml-2 mb-1"
-        render={<Link to="/admin/questions" />}
+        onClick={() => navigate(-1)}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} className="h-3.5 w-3.5" />
         Questions

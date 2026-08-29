@@ -82,7 +82,7 @@ export default function EditQuestion() {
       updateQuestion({ id: questionId ?? "", input: values }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
-      navigate("/admin/questions");
+      navigate(-1);
     },
     onError: (mutationError) => {
       setErrorMsg(
@@ -184,6 +184,7 @@ export default function EditQuestion() {
           <QuestionForm
             register={register}
             errors={errors}
+            onCancel={() => navigate(-1)}
             isPending={isPending}
             submitLabel="Save Changes"
             onSubmit={handleSubmit(onSubmit)}
