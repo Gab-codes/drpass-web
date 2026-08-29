@@ -38,7 +38,7 @@ import { QuestionRow } from "@/components/admin/questions/QuestionRow";
 import { BulkActionBar } from "@/components/admin/questions/BulkActionBar";
 import { QuestionFilters } from "@/components/admin/questions/QuestionFilters";
 import { toast } from "sonner";
-import type { AdminQuestion, AdminQuestionStatus } from "@/types/questions";
+import type { AdminQuestionStatus } from "@/types/questions";
 
 export default function SubjectQuestions() {
   const { subject } = useParams<{ subject: string }>();

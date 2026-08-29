@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { AdminQuestionStatus } from "@/types/questions";
 import { STATUS_OPTIONS } from "@/constants/questions";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -41,18 +42,26 @@ export function QuestionFilters({
   onNextPage,
 }: QuestionFiltersProps) {
   const [localSearch, setLocalSearch] = useState(search);
+  const debouncedSearch = useDebouncedValue(localSearch, 700);
+  const isFirstRender = useRef(true);
+  const lastReported = useRef(search);
 
   useEffect(() => {
     setLocalSearch(search);
   }, [search]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onSearchChange(localSearch);
-    }, 600);
+    // Skip the initial mount so we don't fire a redundant API call,
+    // and skip if the value was already reported back by the parent.
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (debouncedSearch === lastReported.current) return;
 
-    return () => clearTimeout(timer);
-  }, [localSearch, onSearchChange]);
+    lastReported.current = debouncedSearch;
+    onSearchChange(debouncedSearch);
+  }, [debouncedSearch, onSearchChange]);
 
   const showPagination = totalPages > 1;
 
