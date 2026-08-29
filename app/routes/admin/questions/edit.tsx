@@ -17,7 +17,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { QuestionForm } from "@/components/questions/QuestionForm";
+import { QuestionForm } from "@/components/admin/questions/QuestionForm";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,12 @@ export default function EditQuestion() {
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = React.useState("");
 
-  const { data: question, isLoading, isError, error } = useQuery({
+  const {
+    data: question,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: questionKeys.adminDetail(questionId!),
     queryFn: () => getAdminQuestion(questionId!),
     enabled: !!questionId,
@@ -122,7 +127,8 @@ export default function EditQuestion() {
         <div>
           <h1 className="text-lg font-semibold">Edit Question</h1>
           <p className="text-sm text-muted-foreground">
-            Update editable question fields. Review status and activity are managed separately.
+            Update editable question fields. Review status and activity are
+            managed separately.
           </p>
         </div>
         {question && (
@@ -148,7 +154,8 @@ export default function EditQuestion() {
         <p className="text-sm text-muted-foreground">Loading question...</p>
       ) : !question ? (
         <p className="text-sm text-muted-foreground">
-          Question <span className="font-mono">{questionId}</span> was not found.
+          Question <span className="font-mono">{questionId}</span> was not
+          found.
         </p>
       ) : (
         <div className="space-y-6">
@@ -160,13 +167,15 @@ export default function EditQuestion() {
                 setErrorMsg("");
                 toggleMutation.mutate(checked);
               }}
-              disabled={question.status !== "approved" || toggleMutation.isPending}
+              disabled={
+                question.status !== "approved" || toggleMutation.isPending
+              }
             />
             <Label htmlFor="active-mode" className="flex flex-col">
               <span>Active State</span>
               <span className="font-normal text-muted-foreground text-xs">
-                {question.status !== "approved" 
-                  ? "Only approved questions can be activated" 
+                {question.status !== "approved"
+                  ? "Only approved questions can be activated"
                   : "Turn on to make this question available in exams"}
               </span>
             </Label>

@@ -11,14 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ImportSummary } from "@/components/imports/ImportSummary";
+import { ImportSummary } from "@/components/admin/imports/ImportSummary";
 import {
   ImportFilters,
   applyFilters,
-} from "@/components/imports/ImportFilters";
-import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable";
-import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
-import { DuplicateReviewDialog } from "@/components/imports/DuplicateReviewDialog";
+} from "@/components/admin/imports/ImportFilters";
+import { QuestionPreviewTable } from "@/components/admin/imports/QuestionPreviewTable";
+import { QuestionReviewDialog } from "@/components/admin/imports/QuestionReviewDialog";
+import { DuplicateReviewDialog } from "@/components/admin/imports/DuplicateReviewDialog";
 import { getMockImportRecord } from "@/lib/import-mock-data";
 import type { ParsedQuestion, ImportRecordStatus } from "@/types/import-types";
 

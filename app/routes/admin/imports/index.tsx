@@ -16,16 +16,16 @@ import {
   ProgressIndicator,
 } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { ImportDropzone } from "@/components/imports/ImportDropzone";
-import { ImportSummary } from "@/components/imports/ImportSummary";
+import { ImportDropzone } from "@/components/admin/imports/ImportDropzone";
+import { ImportSummary } from "@/components/admin/imports/ImportSummary";
 import {
   ImportFilters,
   applyFilters,
-} from "@/components/imports/ImportFilters";
-import { QuestionPreviewTable } from "@/components/imports/QuestionPreviewTable";
-import { QuestionReviewDialog } from "@/components/imports/QuestionReviewDialog";
-import { QuestionEditDialog } from "@/components/imports/QuestionEditDialog";
-import { DuplicateReviewDialog } from "@/components/imports/DuplicateReviewDialog";
+} from "@/components/admin/imports/ImportFilters";
+import { QuestionPreviewTable } from "@/components/admin/imports/QuestionPreviewTable";
+import { QuestionReviewDialog } from "@/components/admin/imports/QuestionReviewDialog";
+import { QuestionEditDialog } from "@/components/admin/imports/QuestionEditDialog";
+import { DuplicateReviewDialog } from "@/components/admin/imports/DuplicateReviewDialog";
 import {
   buildSummary,
   parseFile,
@@ -242,20 +242,20 @@ export default function Imports() {
 
   async function handleSubmit() {
     const selectedQuestions = activeQuestions.map((q) => ({
-        _clientId: q._clientId,
-        rowIndex: q.rowIndex,
-        year: q.year,
-        subject: q.subject,
-        text: q.text,
-        hasImage: q.hasImage,
-        options: q.options,
-        answer: q.answer,
-        status:
-          q.status === "duplicate" && q.duplicateResolution === "keep"
-            ? ("warning" as const)
-            : q.status,
-        statusReason: q.statusReason,
-      }));
+      _clientId: q._clientId,
+      rowIndex: q.rowIndex,
+      year: q.year,
+      subject: q.subject,
+      text: q.text,
+      hasImage: q.hasImage,
+      options: q.options,
+      answer: q.answer,
+      status:
+        q.status === "duplicate" && q.duplicateResolution === "keep"
+          ? ("warning" as const)
+          : q.status,
+      statusReason: q.statusReason,
+    }));
 
     setSubmitError(null);
     importMutation.mutate({ questions: selectedQuestions });
@@ -577,48 +577,48 @@ function SubmissionFooter({
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-4">
-      {/* Summary line */}
-      <div className="space-y-0.5 text-sm">
-        <p className="font-medium">
-          {activeCount.toLocaleString()} question{activeCount === 1 ? "" : "s"}{" "}
-          across {summary.years.length} year
-          {summary.years.length === 1 ? "" : "s"}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {keptDuplicates > 0 &&
-            `${keptDuplicates} duplicate${keptDuplicates === 1 ? "" : "s"} kept · `}
-          {removedCount > 0 && `${removedCount} removed · `}
-          {summary.warningCount > 0 &&
-            `${summary.warningCount} warning${summary.warningCount === 1 ? "" : "s"}`}
-        </p>
-        {remainingErrors > 0 && (
-          <p className="text-xs font-medium text-destructive">
-            {remainingErrors} error{remainingErrors === 1 ? "" : "s"} must be
-            fixed or removed before submitting
+        {/* Summary line */}
+        <div className="space-y-0.5 text-sm">
+          <p className="font-medium">
+            {activeCount.toLocaleString()} question
+            {activeCount === 1 ? "" : "s"} across {summary.years.length} year
+            {summary.years.length === 1 ? "" : "s"}
           </p>
-        )}
-      </div>
+          <p className="text-xs text-muted-foreground">
+            {keptDuplicates > 0 &&
+              `${keptDuplicates} duplicate${keptDuplicates === 1 ? "" : "s"} kept · `}
+            {removedCount > 0 && `${removedCount} removed · `}
+            {summary.warningCount > 0 &&
+              `${summary.warningCount} warning${summary.warningCount === 1 ? "" : "s"}`}
+          </p>
+          {remainingErrors > 0 && (
+            <p className="text-xs font-medium text-destructive">
+              {remainingErrors} error{remainingErrors === 1 ? "" : "s"} must be
+              fixed or removed before submitting
+            </p>
+          )}
+        </div>
 
-      <Button
-        size="lg"
-        onClick={onSubmit}
-        disabled={remainingErrors > 0 || isSubmitting}
-      >
-        {isSubmitting ? (
-          <>
-            <HugeiconsIcon
-              icon={Clock01Icon}
-              className="h-4 w-4 animate-spin"
-            />
-            Submitting…
-          </>
-        ) : (
-          <>
-            <HugeiconsIcon icon={Upload01Icon} className="h-4 w-4" />
-            Submit for Review
-          </>
-        )}
-      </Button>
+        <Button
+          size="lg"
+          onClick={onSubmit}
+          disabled={remainingErrors > 0 || isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <HugeiconsIcon
+                icon={Clock01Icon}
+                className="h-4 w-4 animate-spin"
+              />
+              Submitting…
+            </>
+          ) : (
+            <>
+              <HugeiconsIcon icon={Upload01Icon} className="h-4 w-4" />
+              Submit for Review
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
