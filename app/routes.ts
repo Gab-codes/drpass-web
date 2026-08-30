@@ -9,6 +9,7 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("register", "routes/auth/register.tsx"),
+  route("onboarding", "routes/onboarding.tsx"),
 
   //User routes
   layout("layout/user-layout.tsx", [

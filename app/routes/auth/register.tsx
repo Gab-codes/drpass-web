@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
+import { AuthLayout } from "@/components/auth/auth-layout";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function RegisterPage() {
     onSuccess: () => {
       // Invalidate the current user query so it fetches the new session
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      navigate("/dashboard");
+      navigate("/onboarding");
     },
     onError: (error: any) => {
       setErrorMsg(error?.message || "An error occurred during registration.");
@@ -48,8 +49,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6 bg-muted/40">
-      <div className="w-full max-w-sm p-6 bg-background rounded-xl border shadow-sm">
+    <AuthLayout>
+      <div className="w-full bg-background rounded-xl border shadow-sm p-6">
         <h1 className="text-2xl font-semibold mb-6 text-center">Create Account</h1>
         
         {errorMsg && (
@@ -109,6 +110,6 @@ export default function RegisterPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
