@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { logout } from "@/api/auth";
 import type { UserResponse } from "@/types/auth";
+import { toast } from "sonner";
 
 type NavItem = {
   title: string;
@@ -63,9 +64,12 @@ export function StudentSidebar({ user, ...props }: StudentSidebarProps) {
 
   const { mutate: handleLogout } = useMutation({
     mutationFn: logout,
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.clear();
       navigate("/login");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to logout");
     },
   });
 
@@ -178,4 +182,3 @@ export function StudentSidebar({ user, ...props }: StudentSidebarProps) {
     </Sidebar>
   );
 }
-
