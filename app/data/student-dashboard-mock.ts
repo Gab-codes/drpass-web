@@ -47,15 +47,15 @@ export type ActivityDay = {
 };
 
 /**
- * An in-progress session the student can resume.
- * null when no unfinished session exists.
+ * The primary recommended action for the student.
+ * Replaces the "resume exam" concept because exams are finite and non-resumable.
  */
-export type ContinueSession = {
-  subject: string;
-  topic: string;
-  questionsRemaining: number;
-  progressPercent: number;
-} | null;
+export type NextAction = {
+  title: string;
+  description: string;
+  subject?: string;
+  actionLabel: string;
+};
 
 /**
  * A topic area to prioritise, derived from performance data.
@@ -77,7 +77,7 @@ export type MockDashboardData = {
   streakDays: number;
   /** Last 7 days of activity, oldest first. */
   recentActivity: ActivityDay[];
-  continueSession: ContinueSession;
+  nextAction: NextAction;
   focusArea: FocusArea;
 };
 
@@ -107,7 +107,11 @@ export const newStudentData: MockDashboardData = {
     { date: "2026-08-29", active: false },
     { date: "2026-08-30", active: false },
   ],
-  continueSession: null,
+  nextAction: {
+    title: "Start your first practice",
+    description: "Take a short diagnostic set to establish your baseline accuracy.",
+    actionLabel: "Start Practice",
+  },
   focusArea: null,
 };
 
@@ -141,11 +145,11 @@ export const earlyStudentData: MockDashboardData = {
     { date: "2026-08-29", active: true },
     { date: "2026-08-30", active: true },
   ],
-  continueSession: {
+  nextAction: {
+    title: "Practice Mathematics",
     subject: "Mathematics",
-    topic: "Algebra & Equations",
-    questionsRemaining: 9,
-    progressPercent: 55,
+    description: "Build momentum. You've answered 16 math questions so far.",
+    actionLabel: "Start Math Practice",
   },
   focusArea: {
     subject: "Mathematics",
@@ -185,11 +189,10 @@ export const establishedStudentData: MockDashboardData = {
     { date: "2026-08-29", active: true },
     { date: "2026-08-30", active: true },
   ],
-  continueSession: {
-    subject: "Chemistry",
-    topic: "Organic Chemistry",
-    questionsRemaining: 12,
-    progressPercent: 53,
+  nextAction: {
+    title: "Take a Mock Exam",
+    description: "You've built up solid practice history. It's time to simulate the real UTME under timed conditions.",
+    actionLabel: "Start Mock Exam",
   },
   focusArea: {
     subject: "Chemistry",
@@ -201,4 +204,3 @@ export const establishedStudentData: MockDashboardData = {
 // ─── Active mock ─────────────────────────────────────────────────────────────
 
 export const MOCK_DASHBOARD_DATA: MockDashboardData = establishedStudentData;
-

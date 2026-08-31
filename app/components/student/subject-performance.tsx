@@ -1,9 +1,4 @@
 import { cn } from "@/lib/utils";
-import {
-  Progress,
-  ProgressTrack,
-  ProgressIndicator,
-} from "@/components/ui/progress";
 import type { SubjectStat, DashboardState } from "@/data/student-dashboard-mock";
 
 interface SubjectPerformanceProps {
@@ -11,18 +6,43 @@ interface SubjectPerformanceProps {
   state: DashboardState;
 }
 
-/** Returns a colour modifier class based on accuracy tier. */
-function getAccuracyClass(accuracy: number): string {
-  if (accuracy >= 70) return "text-primary";
-  if (accuracy >= 55) return "text-foreground";
-  return "text-destructive";
-}
+function CircularProgress({ percentage, className }: { percentage: number; className?: string }) {
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-/** Returns a progress bar colour class based on accuracy tier. */
-function getBarClass(accuracy: number): string {
-  if (accuracy >= 70) return "bg-primary";
-  if (accuracy >= 55) return "bg-brand-gold";
-  return "bg-destructive";
+  return (
+    <div className={cn("relative flex items-center justify-center w-12 h-12 shrink-0", className)} aria-hidden="true">
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 44 44">
+        {/* Background track */}
+        <circle
+          cx="22"
+          cy="22"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          className="text-foreground/10"
+        />
+        {/* Progress stroke */}
+        <circle
+          cx="22"
+          cy="22"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <span className="absolute text-[11px] font-semibold tabular-nums text-foreground">
+        {percentage}%
+      </span>
+    </div>
+  );
 }
 
 export function SubjectPerformance({
@@ -40,51 +60,27 @@ export function SubjectPerformance({
     <section aria-labelledby="subject-perf-heading">
       <h2
         id="subject-perf-heading"
-        className="text-sm font-medium text-foreground mb-3"
+        className="text-base font-semibold tracking-tight text-foreground mb-4"
       >
         Subject performance
       </h2>
 
-      <div className="rounded-2xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
+      <div className="flex flex-col gap-5">
         {sorted.map((stat) => (
-          <div key={stat.subject} className="px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              {/* Subject label */}
-              <span className="text-sm text-foreground w-36 shrink-0 truncate">
+          <div key={stat.subject} className="flex items-center gap-4">
+            <CircularProgress 
+              percentage={stat.accuracy} 
+              className={stat.accuracy >= 70 ? "text-primary" : stat.accuracy >= 55 ? "text-brand-gold" : "text-destructive"} 
+            />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-foreground">
                 {stat.subject}
-              </span>
-
-              {/* Bar */}
-              <div className="flex-1 min-w-0">
-                <Progress
-                  value={stat.accuracy}
-                  aria-label={`${stat.subject}: ${stat.accuracy}% accuracy`}
-                  className="gap-0"
-                >
-                  <ProgressTrack className="h-1.5">
-                    <ProgressIndicator
-                      className={cn("h-full transition-all", getBarClass(stat.accuracy))}
-                    />
-                  </ProgressTrack>
-                </Progress>
-              </div>
-
-              {/* Percentage */}
-              <span
-                className={cn(
-                  "text-sm font-medium tabular-nums w-10 text-right shrink-0",
-                  getAccuracyClass(stat.accuracy),
-                )}
-                aria-hidden="true"
-              >
-                {stat.accuracy}%
               </span>
             </div>
 
-            {/* Screen-reader text for context */}
+            {/* Accessible screen-reader text */}
             <span className="sr-only">
-              {stat.subject}: {stat.accuracy}% accuracy across{" "}
-              {stat.questionsAttempted} questions attempted.
+              {stat.subject}: {stat.accuracy}% accuracy across {stat.questionsAttempted} questions attempted.
             </span>
           </div>
         ))}
@@ -92,4 +88,3 @@ export function SubjectPerformance({
     </section>
   );
 }
-

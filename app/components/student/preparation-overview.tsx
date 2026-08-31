@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import type { PrepMetrics, DashboardState } from "@/data/student-dashboard-mock";
 
 interface PreparationOverviewProps {
@@ -16,7 +15,6 @@ function formatMinutes(minutes: number): string {
 type Metric = {
   label: string;
   value: string;
-  subtext?: string;
 };
 
 export function PreparationOverview({ metrics, state }: PreparationOverviewProps) {
@@ -27,57 +25,37 @@ export function PreparationOverview({ metrics, state }: PreparationOverviewProps
 
   const items: Metric[] = [
     {
-      label: "Questions",
+      label: "Questions attempted",
       value: metrics.questionsAttempted.toLocaleString(),
-      subtext: "attempted",
     },
     {
-      label: "Accuracy",
+      label: "Overall accuracy",
       value: metrics.accuracy !== null ? `${metrics.accuracy}%` : "—",
-      subtext: "overall",
     },
     {
-      label: "Study time",
+      label: "Total study time",
       value: formatMinutes(metrics.studyMinutes),
-      subtext: "total",
     },
     {
-      label: "Sessions",
+      label: "Sessions completed",
       value: metrics.sessionsCompleted.toLocaleString(),
-      subtext: "completed",
     },
   ];
 
   return (
-    <section aria-label="Preparation overview">
-      <div
-        className={cn(
-          "grid gap-px rounded-2xl overflow-hidden ring-1 ring-foreground/10",
-          "grid-cols-2 sm:grid-cols-4",
-        )}
-      >
-        {items.map((item, i) => (
-          <div
-            key={item.label}
-            className={cn(
-              "bg-card px-5 py-4",
-              // Restore gap on non-last columns via border
-              i < items.length - 1 && "border-border",
-            )}
-          >
-            <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-            <p className="text-xl font-semibold tabular-nums text-foreground leading-none">
+    <section aria-label="Preparation overview" className="py-6 border-y border-border">
+      <div className="flex flex-wrap gap-x-12 gap-y-8">
+        {items.map((item) => (
+          <div key={item.label} className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-muted-foreground">
+              {item.label}
+            </span>
+            <span className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
               {item.value}
-            </p>
-            {item.subtext && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {item.subtext}
-              </p>
-            )}
+            </span>
           </div>
         ))}
       </div>
     </section>
   );
 }
-

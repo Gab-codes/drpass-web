@@ -16,14 +16,14 @@ export function DashboardHeader({ profile, state }: DashboardHeaderProps) {
   const greeting = getGreeting();
 
   return (
-    <header className="mb-6 md:mb-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+    <header className="mb-2">
+      <h1 className="text-xl font-medium tracking-tight text-foreground">
         {greeting}, {profile.preferredName}.
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {state === "new" ? (
           <>
-            You&apos;re preparing for{" "}
+            Preparing for{" "}
             <span className="font-medium text-foreground">
               {profile.programme}
             </span>
@@ -35,11 +35,10 @@ export function DashboardHeader({ profile, state }: DashboardHeaderProps) {
             <span className="font-medium text-foreground">
               {profile.programme}
             </span>
-            . Here&apos;s where you stand.
+            .
           </>
         )}
       </p>
     </header>
   );
 }
-

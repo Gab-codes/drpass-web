@@ -1,6 +1,6 @@
-﻿import { motion, type Variants } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { DashboardHeader } from "@/components/student/dashboard-header";
-import { ContinueStudying } from "@/components/student/continue-studying";
+import { PrimaryAction } from "@/components/student/primary-action";
 import { PreparationOverview } from "@/components/student/preparation-overview";
 import { SubjectPerformance } from "@/components/student/subject-performance";
 import { FocusRecommendation } from "@/components/student/focus-recommendation";
@@ -29,7 +29,7 @@ export default function StudentDashboardPage() {
     profile,
     metrics,
     subjectStats,
-    continueSession,
+    nextAction,
     focusArea,
     streakDays,
     recentActivity,
@@ -40,41 +40,42 @@ export default function StudentDashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-10 md:gap-14 max-w-5xl"
     >
-      <motion.div variants={itemVariants}>
-        <DashboardHeader profile={profile} state={state} />
-      </motion.div>
+      <div className="flex flex-col gap-4 md:gap-6">
+        <motion.div variants={itemVariants}>
+          <DashboardHeader profile={profile} state={state} />
+        </motion.div>
 
-      <motion.div variants={itemVariants}>
-        <ContinueStudying
-          session={continueSession}
-          state={state}
-          profile={profile}
-        />
-      </motion.div>
+        <motion.div variants={itemVariants}>
+          <PrimaryAction
+            nextAction={nextAction}
+            state={state}
+            profile={profile}
+          />
+        </motion.div>
+      </div>
 
       <motion.div variants={itemVariants}>
         <PreparationOverview metrics={metrics} state={state} />
       </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
-        <motion.div variants={itemVariants}>
+      <div className="flex flex-col gap-10 md:grid md:gap-16 md:grid-cols-2">
+        <motion.div variants={itemVariants} className="order-1 md:order-1">
+          <FocusRecommendation focusArea={focusArea} state={state} />
+        </motion.div>
+        
+        <motion.div variants={itemVariants} className="order-2 md:order-2">
           <SubjectPerformance subjectStats={subjectStats} state={state} />
         </motion.div>
-
-        <div className="flex flex-col gap-6">
-          <motion.div variants={itemVariants}>
-            <FocusRecommendation focusArea={focusArea} state={state} />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <StudyStreak
-              streakDays={streakDays}
-              recentActivity={recentActivity}
-              state={state}
-            />
-          </motion.div>
-        </div>
+        
+        <motion.div variants={itemVariants} className="order-3 md:order-3 md:col-start-1">
+          <StudyStreak
+            streakDays={streakDays}
+            recentActivity={recentActivity}
+            state={state}
+          />
+        </motion.div>
       </div>
     </motion.div>
   );

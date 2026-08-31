@@ -1,6 +1,4 @@
 import { cn } from "@/lib/utils";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { FireIcon } from "@hugeicons/core-free-icons";
 import type { ActivityDay, DashboardState } from "@/data/student-dashboard-mock";
 
 interface StudyStreakProps {
@@ -18,37 +16,34 @@ export function StudyStreak({
     return null;
   }
 
-  // Abbreviated day names for the past 7 days (e.g., M T W T F S S)
   const formatDay = (dateString: string) => {
     const d = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", { weekday: "narrow" }).format(d);
   };
 
   return (
-    <section aria-labelledby="streak-heading">
-      <div className="flex items-center justify-between mb-3">
-        <h2 id="streak-heading" className="text-sm font-medium text-foreground">
-          Study consistency
-        </h2>
-        <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-          <HugeiconsIcon icon={FireIcon} className="size-4 text-brand-gold" />
-          <span>{streakDays} {streakDays === 1 ? "day" : "days"}</span>
-        </div>
-      </div>
+    <section aria-labelledby="streak-heading" className="py-2">
+      <h2 id="streak-heading" className="text-base font-semibold tracking-tight text-foreground mb-4">
+        Consistency
+      </h2>
+      
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-muted-foreground">
+          You&apos;ve studied {streakDays} {streakDays === 1 ? "day" : "days"} in a row.
+        </p>
 
-      <div className="rounded-2xl bg-card ring-1 ring-foreground/10 p-5">
-        <div className="flex justify-between max-w-[240px]">
-          {recentActivity.map((day, i) => (
+        <div className="flex gap-2.5">
+          {recentActivity.map((day) => (
             <div key={day.date} className="flex flex-col items-center gap-2">
-              <span className="text-xs text-muted-foreground" aria-hidden="true">
+              <span className="text-[10px] uppercase font-medium text-muted-foreground" aria-hidden="true">
                 {formatDay(day.date)}
               </span>
               <div
                 className={cn(
-                  "size-6 rounded-md ring-1 ring-inset",
+                  "size-5 rounded-full ring-1 ring-inset",
                   day.active
-                    ? "bg-primary ring-transparent text-primary-foreground"
-                    : "bg-muted ring-foreground/10",
+                    ? "bg-foreground ring-foreground"
+                    : "bg-transparent ring-border",
                 )}
                 aria-label={`${day.date}: ${
                   day.active ? "Studied" : "Did not study"
@@ -61,4 +56,3 @@ export function StudyStreak({
     </section>
   );
 }
-

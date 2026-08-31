@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { FocusArea, DashboardState } from "@/data/student-dashboard-mock";
 
 interface FocusRecommendationProps {
-  focusArea: FocusArea;
+  focusArea: FocusArea | null;
   state: DashboardState;
 }
 
@@ -14,38 +14,26 @@ export function FocusRecommendation({ focusArea, state }: FocusRecommendationPro
   }
 
   return (
-    <section aria-labelledby="focus-heading">
+    <section aria-labelledby="focus-heading" className="py-2">
       <h2
         id="focus-heading"
-        className="text-sm font-medium text-foreground mb-3"
+        className="text-base font-semibold tracking-tight text-foreground mb-4 flex items-center gap-2"
       >
-        Recommended practice
+        <HugeiconsIcon icon={Target01Icon} className="size-5 text-muted-foreground" />
+        Focus next
       </h2>
 
-      <div className="rounded-2xl bg-warning-muted ring-1 ring-foreground/10 p-5">
-        <div className="flex gap-4">
-          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-background text-foreground shadow-sm">
-            <HugeiconsIcon icon={Target01Icon} className="size-4" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">
-              {focusArea.suggestedTopic}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your accuracy in this {focusArea.subject} topic is{" "}
-              {focusArea.accuracy}%. Reviewing this area could improve your
-              overall score.
-            </p>
-            <div className="mt-4">
-              <Button size="sm" variant="outline" className="gap-1.5" disabled>
-                Practice this topic
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col items-start gap-4 max-w-sm">
+        <p className="text-sm text-foreground leading-relaxed">
+          Your <span className="font-medium">{focusArea.subject}</span> performance needs attention. 
+          Practice <span className="font-medium">{focusArea.suggestedTopic}</span> next.
+        </p>
+        
+        <Button size="sm" variant="outline" className="gap-2 rounded-full h-9" disabled>
+          Practice {focusArea.suggestedTopic}
+          <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" />
+        </Button>
       </div>
     </section>
   );
 }
-
