@@ -16,8 +16,7 @@ import {
   getProgrammeByName,
   getRecommendedSubjectIds,
 } from "@/data/programmes";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Label } from "../ui/label";
 
 interface StepProgrammeProps {
   onNext: () => void;
@@ -90,9 +89,9 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
 
       <div className="space-y-6 pt-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+          <Label className="text-sm font-medium text-foreground">
             Intended Programme
-          </label>
+          </Label>
           <Combobox
             items={PROGRAMME_NAMES}
             limit={30}
@@ -123,7 +122,11 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={reducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+                  transition={
+                    reducedMotion
+                      ? { duration: 0 }
+                      : { duration: 0.2, ease: "easeOut" }
+                  }
                   className="space-y-2 px-4"
                 >
                   <p className="text-sm text-muted-foreground">
@@ -135,7 +138,7 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
                     </p>
                     <button
                       type="button"
-                      className="mt-1 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline underline-offset-4 transition-colors hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                      className="mt-1 cursor-pointer inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline underline-offset-4 transition-colors hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-ring"
                       onClick={handleManualSelection}
                     >
                       Choose your UTME subjects yourself.
@@ -145,17 +148,6 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
               </ComboboxEmpty>
             </ComboboxContent>
           </Combobox>
-
-          {selectedProgramme && (
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              onClick={() => handleProgrammeChange(null)}
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
-              Clear selection
-            </button>
-          )}
         </div>
 
         <div className="flex gap-3 pt-4">
