@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { UTME_SUBJECTS, COMPULSORY_SUBJECT } from "@/constants/onboarding";
@@ -15,15 +21,26 @@ interface StepSubjectsProps {
 
 export function StepSubjects({ onBack }: StepSubjectsProps) {
   const navigate = useNavigate();
-  const { intendedProgramme, subjects, setSubjects, completeOnboarding } = useOnboardingStore();
-  const [isEditing, setIsEditing] = useState(false);
+  const { intendedProgramme, subjects, setSubjects, completeOnboarding } =
+    useOnboardingStore();
+  // Manual path (no programme, only the compulsory subject pre-selected)
+  // opens straight into editing; the programme path shows recommended subjects.
+  const [isEditing, setIsEditing] = useState(
+    subjects.length <= 1 && !intendedProgramme,
+  );
   const [errorMsg, setErrorMsg] = useState("");
 
-  const compulsorySubject = UTME_SUBJECTS.find(s => s.id === COMPULSORY_SUBJECT)!;
-  const availableOptions = UTME_SUBJECTS.filter(s => s.id !== COMPULSORY_SUBJECT);
-  
+  const compulsorySubject = UTME_SUBJECTS.find(
+    (s) => s.id === COMPULSORY_SUBJECT,
+  )!;
+  const availableOptions = UTME_SUBJECTS.filter(
+    (s) => s.id !== COMPULSORY_SUBJECT,
+  );
+
   // The first slot is always english, next 3 are the remaining selections
-  const selectedOptionalSubjects = subjects.filter(s => s !== COMPULSORY_SUBJECT);
+  const selectedOptionalSubjects = subjects.filter(
+    (s) => s !== COMPULSORY_SUBJECT,
+  );
   // Pad with empty strings if less than 3 are selected
   const editableSlots = [
     selectedOptionalSubjects[0] || "",
@@ -34,26 +51,28 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
   const handleSubjectChange = (index: number, newSubjectId: string) => {
     const newSlots = [...editableSlots];
     newSlots[index] = newSubjectId;
-    
+
     // Check for duplicates
     const selectedSoFar = newSlots.filter(Boolean);
     const uniqueSelected = new Set(selectedSoFar);
-    
+
     if (selectedSoFar.length !== uniqueSelected.size) {
       setErrorMsg("You cannot select the same subject twice.");
       return;
     }
-    
+
     setErrorMsg("");
     setSubjects([COMPULSORY_SUBJECT, ...selectedSoFar]);
   };
 
   const handleComplete = () => {
     if (subjects.length !== 4) {
-      setErrorMsg("Please select exactly 3 subjects in addition to Use of English.");
+      setErrorMsg(
+        "Please select exactly 3 subjects in addition to Use of English.",
+      );
       return;
     }
-    
+
     completeOnboarding();
     navigate("/dashboard");
   };
@@ -86,7 +105,9 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
         <div className="flex items-center gap-3 p-4 rounded-xl border bg-muted/40 text-muted-foreground">
           <HugeiconsIcon icon={LockKeyIcon} className="size-5 shrink-0" />
           <span className="font-medium">{compulsorySubject.name}</span>
-          <span className="ml-auto text-xs font-semibold uppercase tracking-wider">Required</span>
+          <span className="ml-auto text-xs font-semibold uppercase tracking-wider">
+            Required
+          </span>
         </div>
 
         {/* Optional Subjects */}
@@ -100,14 +121,19 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
               className="space-y-3"
             >
               {editableSlots.map((subjectId, i) => {
-                const subject = UTME_SUBJECTS.find(s => s.id === subjectId);
+                const subject = UTME_SUBJECTS.find((s) => s.id === subjectId);
                 return (
-                  <div key={`view-${i}`} className="p-4 rounded-xl border bg-card text-card-foreground">
-                    <span className="font-medium">{subject?.name || "No subject selected"}</span>
+                  <div
+                    key={`view-${i}`}
+                    className="p-4 rounded-xl border bg-card text-card-foreground"
+                  >
+                    <span className="font-medium">
+                      {subject?.name || "No subject selected"}
+                    </span>
                   </div>
                 );
               })}
-              
+
               <div className="flex gap-3 pt-6">
                 <Button
                   type="button"
@@ -118,9 +144,9 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
                 >
                   Edit subjects
                 </Button>
-                <Button 
-                  type="button" 
-                  size="lg" 
+                <Button
+                  type="button"
+                  size="lg"
                   className="flex-1 h-12"
                   disabled={subjects.length !== 4}
                   onClick={handleComplete}
@@ -141,8 +167,8 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
                   <label className="text-sm font-medium text-foreground">
                     Subject {i + 1}
                   </label>
-                  <Select 
-                    value={subjectId} 
+                  <Select
+                    value={subjectId}
                     onValueChange={(val) => handleSubjectChange(i, val || "")}
                   >
                     <SelectTrigger className="w-full h-12 text-base">
@@ -150,10 +176,13 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {availableOptions.map((sub) => (
-                        <SelectItem 
-                          key={sub.id} 
-                          value={sub.id}
-                          disabled={editableSlots.includes(sub.id) && editableSlots[i] !== sub.id}
+                        <SelectItem
+                          key={sub.id}
+                          value={sub.name}
+                          disabled={
+                            editableSlots.includes(sub.id) &&
+                            editableSlots[i] !== sub.id
+                          }
                         >
                           {sub.name}
                         </SelectItem>
@@ -162,7 +191,7 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
                   </Select>
                 </div>
               ))}
-              
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
@@ -181,15 +210,10 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
           )}
         </AnimatePresence>
       </div>
-      
+
       {!isEditing && (
         <div className="pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={onBack}>
             Back to previous step
           </Button>
         </div>
