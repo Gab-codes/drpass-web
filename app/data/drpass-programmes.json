@@ -1,0 +1,1049 @@
+{
+  "version": "1.0.0",
+  "programmes": [
+    {
+      "id": "medicine-and-surgery",
+      "name": "Medicine and Surgery",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "nursing-science",
+      "name": "Nursing Science",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "pharmacy",
+      "name": "Pharmacy",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "dentistry",
+      "name": "Dentistry",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "physiotherapy",
+      "name": "Physiotherapy",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "radiography",
+      "name": "Radiography",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "medical-laboratory-science",
+      "name": "Medical Laboratory Science",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "medical-rehabilitation",
+      "name": "Medical Rehabilitation",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "physiology",
+      "name": "Physiology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "anatomy",
+      "name": "Anatomy",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Biology",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "veterinary-medicine",
+      "name": "Veterinary Medicine",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "public-health",
+      "name": "Public Health",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "environmental-health-science",
+      "name": "Environmental Health Science",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "biochemistry",
+      "name": "Biochemistry",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "microbiology",
+      "name": "Microbiology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "biological-sciences",
+      "name": "Biological Sciences",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "botany",
+      "name": "Botany",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "zoology",
+      "name": "Zoology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "marine-biology",
+      "name": "Marine Biology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "physics",
+      "name": "Physics",
+      "recommendedSubjects": [
+        "Physics",
+        "Mathematics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "chemistry",
+      "name": "Chemistry",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Physics",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "industrial-chemistry",
+      "name": "Industrial Chemistry",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Physics",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "geology",
+      "name": "Geology",
+      "recommendedSubjects": [
+        "Physics",
+        "Chemistry",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "geophysics",
+      "name": "Geophysics",
+      "recommendedSubjects": [
+        "Physics",
+        "Chemistry",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "pure-and-applied-mathematics",
+      "name": "Pure and Applied Mathematics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "statistics",
+      "name": "Statistics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Physics"
+      ]
+    },
+    {
+      "id": "civil-engineering",
+      "name": "Civil Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "mechanical-engineering",
+      "name": "Mechanical Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "electrical-and-electronics-engineering",
+      "name": "Electrical and Electronics Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "chemical-engineering",
+      "name": "Chemical Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "computer-engineering",
+      "name": "Computer Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "agricultural-engineering",
+      "name": "Agricultural Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "petroleum-engineering",
+      "name": "Petroleum Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "metallurgical-and-materials-engineering",
+      "name": "Metallurgical and Materials Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "production-and-industrial-engineering",
+      "name": "Production and Industrial Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "structural-engineering",
+      "name": "Structural Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "systems-engineering",
+      "name": "Systems Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "marine-engineering",
+      "name": "Marine Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "aerospace-engineering",
+      "name": "Aerospace Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "mechatronics-engineering",
+      "name": "Mechatronics Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "biomedical-engineering",
+      "name": "Biomedical Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "computer-science",
+      "name": "Computer Science",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "software-engineering",
+      "name": "Software Engineering",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "information-technology",
+      "name": "Information Technology",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "information-systems",
+      "name": "Information Systems",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Economics"
+      ]
+    },
+    {
+      "id": "cyber-security",
+      "name": "Cyber Security",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "data-science",
+      "name": "Data Science",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "building",
+      "name": "Building",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "quantity-surveying",
+      "name": "Quantity Surveying",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "estate-management",
+      "name": "Estate Management",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "urban-and-regional-planning",
+      "name": "Urban and Regional Planning",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Geography",
+        "Economics"
+      ]
+    },
+    {
+      "id": "surveying-and-geoinformatics",
+      "name": "Surveying and Geoinformatics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "geography-and-regional-planning",
+      "name": "Geography and Regional Planning",
+      "recommendedSubjects": [
+        "Geography",
+        "Mathematics",
+        "Economics"
+      ]
+    },
+    {
+      "id": "environmental-management-and-toxicology",
+      "name": "Environmental Management and Toxicology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Geography"
+      ]
+    },
+    {
+      "id": "agriculture",
+      "name": "Agriculture",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "agricultural-economics",
+      "name": "Agricultural Economics",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "agricultural-extension",
+      "name": "Agricultural Extension",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "agronomy",
+      "name": "Agronomy",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "animal-science",
+      "name": "Animal Science",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "crop-science",
+      "name": "Crop Science",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "soil-science",
+      "name": "Soil Science",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "fisheries-and-aquaculture",
+      "name": "Fisheries and Aquaculture",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "forestry-and-wildlife-management",
+      "name": "Forestry and Wildlife Management",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Mathematics"
+      ]
+    },
+    {
+      "id": "food-science-and-technology",
+      "name": "Food Science and Technology",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "nutrition-and-dietetics",
+      "name": "Nutrition and Dietetics",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "home-economics",
+      "name": "Home Economics",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Agricultural Science"
+      ]
+    },
+    {
+      "id": "economics",
+      "name": "Economics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "accounting",
+      "name": "Accounting",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "business-administration",
+      "name": "Business Administration",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "business-management",
+      "name": "Business Management",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "banking-and-finance",
+      "name": "Banking and Finance",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "taxation",
+      "name": "Taxation",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "actuarial-science",
+      "name": "Actuarial Science",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "political-science",
+      "name": "Political Science",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "public-administration",
+      "name": "Public Administration",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "sociology",
+      "name": "Sociology",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "psychology",
+      "name": "Psychology",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "international-relations",
+      "name": "International Relations",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "History"
+      ]
+    },
+    {
+      "id": "criminology-and-security-studies",
+      "name": "Criminology and Security Studies",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "History"
+      ]
+    },
+    {
+      "id": "social-work",
+      "name": "Social Work",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "demography-and-social-statistics",
+      "name": "Demography and Social Statistics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "cooperative-and-rural-development",
+      "name": "Cooperative and Rural Development",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "industrial-relations-and-personnel-management",
+      "name": "Industrial Relations and Personnel Management",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "transport-management",
+      "name": "Transport Management",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "hospitality-and-tourism-management",
+      "name": "Hospitality and Tourism Management",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Government"
+      ]
+    },
+    {
+      "id": "tourism-studies",
+      "name": "Tourism Studies",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "library-and-information-science",
+      "name": "Library and Information Science",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Literature in English"
+      ]
+    },
+    {
+      "id": "english-and-literary-studies",
+      "name": "English and Literary Studies",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "literature-in-english",
+      "name": "Literature in English",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "linguistics",
+      "name": "Linguistics",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "history-and-international-studies",
+      "name": "History and International Studies",
+      "recommendedSubjects": [
+        "History",
+        "Government",
+        "Literature in English"
+      ]
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "recommendedSubjects": [
+        "Government",
+        "History",
+        "Literature in English"
+      ]
+    },
+    {
+      "id": "theatre-arts",
+      "name": "Theatre Arts",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "music",
+      "name": "Music",
+      "recommendedSubjects": [
+        "Government",
+        "History",
+        "Literature in English"
+      ]
+    },
+    {
+      "id": "fine-and-applied-arts",
+      "name": "Fine and Applied Arts",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "History"
+      ]
+    },
+    {
+      "id": "french",
+      "name": "French",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "religious-studies",
+      "name": "Religious Studies",
+      "recommendedSubjects": [
+        "Christian Religious Studies",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "islamic-studies",
+      "name": "Islamic Studies",
+      "recommendedSubjects": [
+        "Islamic Religious Studies",
+        "History",
+        "Government"
+      ]
+    },
+    {
+      "id": "law",
+      "name": "Law",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "Economics"
+      ]
+    },
+    {
+      "id": "mass-communication",
+      "name": "Mass Communication",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "Economics"
+      ]
+    },
+    {
+      "id": "education-and-biology",
+      "name": "Education and Biology",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    },
+    {
+      "id": "education-and-chemistry",
+      "name": "Education and Chemistry",
+      "recommendedSubjects": [
+        "Chemistry",
+        "Biology",
+        "Physics"
+      ]
+    },
+    {
+      "id": "education-and-physics",
+      "name": "Education and Physics",
+      "recommendedSubjects": [
+        "Physics",
+        "Mathematics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "education-and-mathematics",
+      "name": "Education and Mathematics",
+      "recommendedSubjects": [
+        "Mathematics",
+        "Physics",
+        "Chemistry"
+      ]
+    },
+    {
+      "id": "education-and-english-language",
+      "name": "Education and English Language",
+      "recommendedSubjects": [
+        "Literature in English",
+        "Government",
+        "History"
+      ]
+    },
+    {
+      "id": "education-and-economics",
+      "name": "Education and Economics",
+      "recommendedSubjects": [
+        "Economics",
+        "Mathematics",
+        "Government"
+      ]
+    },
+    {
+      "id": "education-and-government",
+      "name": "Education and Government",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "History"
+      ]
+    },
+    {
+      "id": "education-and-political-science",
+      "name": "Education and Political Science",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "History"
+      ]
+    },
+    {
+      "id": "guidance-and-counselling",
+      "name": "Guidance and Counselling",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "adult-education",
+      "name": "Adult Education",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "educational-management",
+      "name": "Educational Management",
+      "recommendedSubjects": [
+        "Government",
+        "Economics",
+        "Geography"
+      ]
+    },
+    {
+      "id": "human-kinetics-and-health-education",
+      "name": "Human Kinetics and Health Education",
+      "recommendedSubjects": [
+        "Biology",
+        "Chemistry",
+        "Physics"
+      ]
+    }
+  ]
+}

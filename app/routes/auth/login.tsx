@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
+import { AuthLayout } from "@/components/auth/auth-layout";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -49,8 +50,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6 bg-muted/40">
-      <div className="w-full max-w-sm p-6 bg-background rounded-xl border shadow-sm">
+    <AuthLayout>
+      <div className="w-full bg-background rounded-xl border shadow-sm p-6">
         <h1 className="text-2xl font-semibold mb-6 text-center">Sign In</h1>
 
         {errorMsg && (
@@ -97,6 +98,6 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
