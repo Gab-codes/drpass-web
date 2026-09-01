@@ -69,7 +69,9 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
           Your UTME Subjects
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Based on your choice of {intendedProgramme?.name}, I've picked the subjects you'll likely need.
+          {intendedProgramme
+            ? `Based on your choice of ${intendedProgramme.name}, I've picked the subjects you'll likely need.`
+            : "You're choosing your subjects yourself. Pick the three you'll sit for in UTME."}
         </p>
       </div>
 

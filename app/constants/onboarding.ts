@@ -1,4 +1,4 @@
-import type { Programme, Subject, SubjectRecommendationMap } from "@/types/onboarding";
+import type { Subject } from "@/types/onboarding";
 
 export const UTME_SUBJECTS: Subject[] = [
   { id: "english", name: "Use of English" }, // Compulsory
@@ -24,51 +24,5 @@ export const UTME_SUBJECTS: Subject[] = [
   { id: "fine-arts", name: "Fine Arts" },
   { id: "computer", name: "Computer Studies" },
 ];
-
-export const PROGRAMMES: Programme[] = [
-  { id: "medicine", name: "Medicine and Surgery", faculty: "College of Medicine" },
-  { id: "nursing", name: "Nursing Science", faculty: "College of Medicine" },
-  { id: "pharmacy", name: "Pharmacy", faculty: "College of Medicine" },
-  { id: "computer_sci", name: "Computer Science", faculty: "Science" },
-  { id: "software_eng", name: "Software Engineering", faculty: "Engineering" },
-  { id: "mech_eng", name: "Mechanical Engineering", faculty: "Engineering" },
-  { id: "civil_eng", name: "Civil Engineering", faculty: "Engineering" },
-  { id: "elect_eng", name: "Electrical Engineering", faculty: "Engineering" },
-  { id: "accounting", name: "Accounting", faculty: "Management Sciences" },
-  { id: "bus_admin", name: "Business Administration", faculty: "Management Sciences" },
-  { id: "banking_fin", name: "Banking and Finance", faculty: "Management Sciences" },
-  { id: "economics", name: "Economics", faculty: "Social Sciences" },
-  { id: "pol_sci", name: "Political Science", faculty: "Social Sciences" },
-  { id: "mass_comm", name: "Mass Communication", faculty: "Social Sciences" },
-  { id: "sociology", name: "Sociology", faculty: "Social Sciences" },
-  { id: "law", name: "Law", faculty: "Law" },
-  { id: "english_lit", name: "English Language and Literature", faculty: "Arts" },
-  { id: "history", name: "History and International Studies", faculty: "Arts" },
-  { id: "architecture", name: "Architecture", faculty: "Environmental Sciences" },
-  { id: "agric_sci", name: "Agricultural Science", faculty: "Agriculture" },
-];
-
-export const SUBJECT_RECOMMENDATIONS: SubjectRecommendationMap = {
-  medicine: ["physics", "chemistry", "biology"],
-  nursing: ["physics", "chemistry", "biology"],
-  pharmacy: ["physics", "chemistry", "biology"],
-  computer_sci: ["math", "physics", "chemistry"],
-  software_eng: ["math", "physics", "chemistry"],
-  mech_eng: ["math", "physics", "chemistry"],
-  civil_eng: ["math", "physics", "chemistry"],
-  elect_eng: ["math", "physics", "chemistry"],
-  accounting: ["math", "econ", "commerce"],
-  bus_admin: ["math", "econ", "commerce"],
-  banking_fin: ["math", "econ", "commerce"],
-  economics: ["math", "econ", "government"],
-  pol_sci: ["government", "history", "econ"],
-  mass_comm: ["lit-eng", "government", "econ"],
-  sociology: ["government", "history", "econ"],
-  law: ["lit-eng", "government", "crk"],
-  english_lit: ["lit-eng", "government", "history"],
-  history: ["history", "government", "lit-eng"],
-  architecture: ["math", "physics", "geography"],
-  agric_sci: ["agric", "chemistry", "physics"],
-};
 
 export const COMPULSORY_SUBJECT = "english";

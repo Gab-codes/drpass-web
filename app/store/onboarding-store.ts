@@ -10,7 +10,7 @@ interface OnboardingState {
   onboardingCompleted: boolean;
 
   setPreferredName: (name: string) => void;
-  setIntendedProgramme: (programme: Programme) => void;
+  setIntendedProgramme: (programme: Programme | null) => void;
   setSubjects: (subjects: string[]) => void;
   addSubject: (subjectId: string) => void;
   removeSubject: (subjectId: string) => void;
@@ -28,7 +28,7 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       setPreferredName: (name) => set({ preferredName: name }),
       
-      setIntendedProgramme: (programme) => 
+      setIntendedProgramme: (programme) =>
         set({ intendedProgramme: programme }),
       
       setSubjects: (subjects) => {
