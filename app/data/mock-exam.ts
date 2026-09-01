@@ -15,7 +15,22 @@ export interface ExamConfig {
   subjects: string[];
   questionsPerSubject: number;
   totalTimeMinutes: number;
+  /** Route the student is returned to when leaving or finishing the exam. */
+  exitPath: string;
 }
+
+// ─── Quick Practice configuration limits & presets ──────────────────────────
+export const PRACTICE_LIMITS = {
+  minQuestionsPerSubject: 1,
+  maxQuestionsPerSubject: 100,
+  minTotalMinutes: 1,
+  maxTotalMinutes: 180,
+  maxSubjects: 2,
+} as const;
+
+export const QUESTION_PRESETS = [5, 10, 20, 40] as const;
+export const TIME_PRESETS = [5, 15, 30, 60] as const;
+
 
 export const MOCK_SUBJECTS = [
   { id: "english", name: "Use of English" },
@@ -88,6 +103,10 @@ export const MOCK_QUESTIONS: Record<string, Question[]> = {
     },
   ],
 };
+
+export function getAvailableQuestionCount(subjectId: string): number {
+  return MOCK_QUESTIONS[subjectId]?.length ?? 0;
+}
 
 export function generateMockExam(config: ExamConfig): Question[] {
   const selectedQuestions: Question[] = [];

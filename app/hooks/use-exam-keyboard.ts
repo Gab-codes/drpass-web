@@ -8,6 +8,8 @@ interface ExamKeyboardHandlers {
   onSubmitConfirm: () => void;
   onSubmitCancel: () => void;
   isSubmitDialogOpen: boolean;
+  /** While the exit-confirmation dialog is open, suppress all shortcuts. */
+  isExitDialogOpen?: boolean;
   options: { label: string; id: string }[];
 }
 
@@ -19,6 +21,7 @@ export function useExamKeyboard({
   onSubmitConfirm,
   onSubmitCancel,
   isSubmitDialogOpen,
+  isExitDialogOpen,
   options,
 }: ExamKeyboardHandlers) {
   useEffect(() => {
@@ -30,6 +33,11 @@ export function useExamKeyboard({
         target.tagName === "TEXTAREA" ||
         target.isContentEditable
       ) {
+        return;
+      }
+
+      // Exit dialog handles its own keyboard interaction (Esc via the dialog)
+      if (isExitDialogOpen) {
         return;
       }
 
@@ -85,6 +93,7 @@ export function useExamKeyboard({
     onSubmitConfirm,
     onSubmitCancel,
     isSubmitDialogOpen,
+    isExitDialogOpen,
     options,
   ]);
 }

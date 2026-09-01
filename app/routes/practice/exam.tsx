@@ -7,6 +7,7 @@ import { QuestionCard } from "@/components/exam/question-card";
 import { ExamNavigator } from "@/components/exam/exam-navigator";
 import { ExamControls } from "@/components/exam/exam-controls";
 import { SubmitDialog } from "@/components/exam/submit-dialog";
+import { ExitDialog } from "@/components/exam/exit-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -95,7 +96,7 @@ function CompletedScreen({
           questions.
         </p>
         <Button onClick={onExit} size="lg" className="mt-2 rounded-full">
-          Back to Dashboard
+          Back to Practice
         </Button>
       </div>
     </div>
@@ -107,12 +108,14 @@ export default function ExamPage() {
   const navigate = useNavigate();
   const timedOutRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   // Tracks which thresholds have been announced to avoid repeated announcements
   const announcedThresholds = useRef<Set<number>>(new Set());
   const [srAnnouncement, setSrAnnouncement] = useState("");
 
   const {
     status,
+    config,
     questions,
     currentQuestionIndex,
     answers,
@@ -186,9 +189,13 @@ export default function ExamPage() {
     [currentQuestion, setAnswer]
   );
 
-  const handleExit = () => {
+  const handleExitRequest = () => setIsExitDialogOpen(true);
+
+  const handleExitConfirm = () => {
+    // Return to the screen the exam was launched from (never hard-coded).
+    const exitPath = config?.exitPath ?? "/practice";
     resetExam();
-    navigate("/dashboard");
+    navigate(exitPath);
   };
 
   // Keyboard shortcuts — centralized
@@ -200,13 +207,14 @@ export default function ExamPage() {
     onSubmitConfirm: submitExam,
     onSubmitCancel: closeSubmitDialog,
     isSubmitDialogOpen,
+    isExitDialogOpen,
     options: currentQuestion?.options ?? [],
   });
 
   // ── Completed state ──────────────────────────────────────────────────────
   if (status === "completed") {
     return (
-      <CompletedScreen timedOut={timedOutRef.current} onExit={handleExit} />
+      <CompletedScreen timedOut={timedOutRef.current} onExit={handleExitConfirm} />
     );
   }
 
@@ -331,7 +339,7 @@ export default function ExamPage() {
             {/* Exit */}
             <button
               type="button"
-              onClick={handleExit}
+              onClick={handleExitRequest}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               aria-label="Exit practice session and return to dashboard"
             >
@@ -481,6 +489,13 @@ export default function ExamPage() {
         open={isSubmitDialogOpen}
         onClose={closeSubmitDialog}
         onConfirm={submitExam}
+      />
+
+      {/* ── Leave-session confirmation dialog ───────────────────────────── */}
+      <ExitDialog
+        open={isExitDialogOpen}
+        onClose={() => setIsExitDialogOpen(false)}
+        onConfirm={handleExitConfirm}
       />
     </>
   );

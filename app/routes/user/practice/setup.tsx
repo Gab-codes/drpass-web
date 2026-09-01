@@ -8,44 +8,99 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { MOCK_SUBJECTS, generateMockExam } from "@/data/mock-exam";
+  MOCK_SUBJECTS,
+  QUESTION_PRESETS,
+  TIME_PRESETS,
+  PRACTICE_LIMITS,
+  getAvailableQuestionCount,
+  generateMockExam,
+} from "@/data/mock-exam";
 import { useExamStore } from "@/store/exam-store";
+import { StepperInput } from "@/components/practice/stepper-input";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_QUESTIONS = 10;
+const DEFAULT_MINUTES = 15;
+
+// Preset chip shared by both steppers
+function PresetChips({
+  values,
+  current,
+  onSelect,
+  label,
+}: {
+  values: readonly number[];
+  current: number;
+  onSelect: (v: number) => void;
+  label: string;
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      role="group"
+      aria-label={label}
+    >
+      {values.map((v) => {
+        const isActive = v === current;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onSelect(v)}
+            aria-pressed={isActive}
+            className={cn(
+              "h-8 px-3 rounded-full border text-xs font-medium tabular-nums transition-colors outline-none",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              isActive
+                ? "border-primary bg-accent text-accent-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+              "cursor-pointer"
+            )}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function PracticeSetup() {
   const navigate = useNavigate();
   const setupExam = useExamStore((state) => state.setupExam);
 
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [questionsPerSubject, setQuestionsPerSubject] = useState<number>(10);
-  const [totalTimeMinutes, setTotalTimeMinutes] = useState<number>(15);
+  const [questionsPerSubject, setQuestionsPerSubject] = useState<number>(DEFAULT_QUESTIONS);
+  const [totalTimeMinutes, setTotalTimeMinutes] = useState<number>(DEFAULT_MINUTES);
 
   const toggleSubject = (id: string) => {
     setSelectedSubjects((prev) => {
       if (prev.includes(id)) {
         return prev.filter((s) => s !== id);
       }
-      if (prev.length < 2) {
+      if (prev.length < PRACTICE_LIMITS.maxSubjects) {
         return [...prev, id];
       }
-      return prev; // Already have 2, no-op
+      return prev; // Already have max, no-op
     });
   };
 
+  const isValidQuestions =
+    questionsPerSubject >= PRACTICE_LIMITS.minQuestionsPerSubject &&
+    questionsPerSubject <= PRACTICE_LIMITS.maxQuestionsPerSubject;
+  const isValidMinutes =
+    totalTimeMinutes >= PRACTICE_LIMITS.minTotalMinutes &&
+    totalTimeMinutes <= PRACTICE_LIMITS.maxTotalMinutes;
+  const isValid = isValidQuestions && isValidMinutes;
+
   const handleStart = () => {
-    if (selectedSubjects.length === 0) return;
+    if (selectedSubjects.length === 0 || !isValid) return;
     const config = {
       subjects: selectedSubjects,
       questionsPerSubject,
       totalTimeMinutes,
+      exitPath: "/practice",
     };
     const questions = generateMockExam(config);
     setupExam(config, questions);
@@ -135,11 +190,28 @@ export default function PracticeSetup() {
                     </span>
                     <span
                       className={cn(
-                        "font-medium text-sm",
+                        "flex-1 min-w-0",
                         isSelected ? "text-accent-foreground" : "text-foreground"
                       )}
                     >
-                      {subject.name}
+                      <span
+                        className={cn(
+                          "block font-medium text-sm",
+                          isSelected ? "text-accent-foreground" : "text-foreground"
+                        )}
+                      >
+                        {subject.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "block text-xs mt-0.5",
+                          isSelected ? "text-accent-foreground/70" : "text-muted-foreground"
+                        )}
+                      >
+                        {getAvailableQuestionCount(subject.id) > 0
+                          ? `${getAvailableQuestionCount(subject.id)} questions available`
+                          : "No questions available yet"}
+                      </span>
                     </span>
                   </button>
                 );
@@ -164,55 +236,71 @@ export default function PracticeSetup() {
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="questions-select" className="text-sm">
-                  Questions per subject
-                </Label>
-                <Select
-                  value={questionsPerSubject.toString()}
-                  onValueChange={(v) => setQuestionsPerSubject(Number(v))}
-                >
-                  <SelectTrigger
-                    id="questions-select"
-                    className="h-11 w-full rounded-xl"
-                  >
-                    <SelectValue placeholder="Select count" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 questions</SelectItem>
-                    <SelectItem value="20">20 questions</SelectItem>
-                    <SelectItem value="30">30 questions</SelectItem>
-                    <SelectItem value="40">40 questions</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2.5">
+                <StepperInput
+                  id="questions-input"
+                  label="Questions per subject"
+                  value={questionsPerSubject}
+                  onChange={setQuestionsPerSubject}
+                  min={PRACTICE_LIMITS.minQuestionsPerSubject}
+                  max={PRACTICE_LIMITS.maxQuestionsPerSubject}
+                  suffix="questions"
+                  error={
+                    isValidQuestions
+                      ? undefined
+                      : `Enter a value between ${PRACTICE_LIMITS.minQuestionsPerSubject} and ${PRACTICE_LIMITS.maxQuestionsPerSubject}.`
+                  }
+                />
+                <PresetChips
+                  values={QUESTION_PRESETS}
+                  current={questionsPerSubject}
+                  onSelect={setQuestionsPerSubject}
+                  label="Quick question count presets"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="time-select" className="text-sm">
-                  Total time limit
-                </Label>
-                <Select
-                  value={totalTimeMinutes.toString()}
-                  onValueChange={(v) => setTotalTimeMinutes(Number(v))}
-                >
-                  <SelectTrigger
-                    id="time-select"
-                    className="h-11 w-full rounded-xl"
-                  >
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 minutes</SelectItem>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="45">45 minutes</SelectItem>
-                    <SelectItem value="60">60 minutes</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Applies to the entire practice session.
-                </p>
+              <div className="space-y-2.5">
+                <StepperInput
+                  id="time-input"
+                  label="Total time limit"
+                  value={totalTimeMinutes}
+                  onChange={setTotalTimeMinutes}
+                  min={PRACTICE_LIMITS.minTotalMinutes}
+                  max={PRACTICE_LIMITS.maxTotalMinutes}
+                  suffix="minutes"
+                  hint="Applies to the entire practice session."
+                  error={
+                    isValidMinutes
+                      ? undefined
+                      : `Enter a value between ${PRACTICE_LIMITS.minTotalMinutes} and ${PRACTICE_LIMITS.maxTotalMinutes} minutes.`
+                  }
+                />
+                <PresetChips
+                  values={TIME_PRESETS}
+                  current={totalTimeMinutes}
+                  onSelect={setTotalTimeMinutes}
+                  label="Quick duration presets"
+                />
               </div>
             </div>
+
+            {/* Availability advisory — soft, non-blocking */}
+            {selectedSubjects.length > 0 && (() => {
+              const lowest = Math.min(
+                ...selectedSubjects.map((s) => getAvailableQuestionCount(s))
+              );
+              if (questionsPerSubject <= lowest) return null;
+              return (
+                <p
+                  className="text-xs text-warning mt-4"
+                  role="status"
+                >
+                  Some selected subjects have fewer than {questionsPerSubject}{" "}
+                  questions available. Your session will fill the remaining
+                  questions from the full question bank.
+                </p>
+              );
+            })()}
           </section>
         </div>
 
@@ -252,7 +340,7 @@ export default function PracticeSetup() {
               <Button
                 size="lg"
                 className="w-full rounded-xl"
-                disabled={selectedSubjects.length === 0}
+                disabled={selectedSubjects.length === 0 || !isValid}
                 onClick={handleStart}
               >
                 Start Practice
