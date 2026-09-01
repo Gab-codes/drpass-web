@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { PROGRAMMES, getRecommendedSubjectIds } from "@/data/programmes";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
 const MANUAL_SELECTION = "__manual__";
 
@@ -24,14 +24,23 @@ interface StepProgrammeProps {
 export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
   const { preferredName, intendedProgramme, setIntendedProgramme, setSubjects } = useOnboardingStore();
   const [selectedId, setSelectedId] = useState<string>(intendedProgramme?.id || "");
-  const [comboboxOpen, setComboboxOpen] = useState(false);
 
   const selectedProgramme = PROGRAMMES.find((p) => p.id === selectedId) || null;
   const isManual = selectedId === MANUAL_SELECTION;
 
   const handleSelect = (value: string) => {
     setSelectedId(value);
-    setComboboxOpen(false);
+  };
+
+  const handleProgrammeChange = (name: string | null) => {
+    if (!name) {
+      setSelectedId("");
+      return;
+    }
+    const programme = PROGRAMMES.find((p) => p.name === name);
+    if (programme) {
+      setSelectedId(programme.id);
+    }
   };
 
   const handleContinue = () => {
@@ -79,34 +88,28 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
           <label className="text-sm font-medium text-foreground">
             Intended Programme
           </label>
-          <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-            <PopoverTrigger className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-transparent px-3 text-left text-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
-              <span className={triggerLabel ? "" : "text-muted-foreground"}>
-                {triggerLabel || "Search programmes..."}
-              </span>
-              <HugeiconsIcon icon={Search01Icon} className="size-4 shrink-0 opacity-50" />
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--anchor-width)] min-w-56 p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search programmes..." />
-                <CommandList>
-                  <CommandEmpty>No programmes matched your search.</CommandEmpty>
-                  {PROGRAMMES.map((prog) => (
-                    <CommandItem
-                      key={prog.id}
-                      value={prog.name}
-                      onSelect={() => handleSelect(prog.id)}
-                    >
-                      {prog.name}
-                      {prog.id === selectedId && (
-                        <HugeiconsIcon icon={Tick02Icon} className="ml-auto size-4 shrink-0" />
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <Combobox
+            items={PROGRAMMES.map((p) => p.name)}
+            value={isManual ? null : selectedProgramme?.name || null}
+            onValueChange={handleProgrammeChange}
+          >
+            <ComboboxInput
+              placeholder="Search programmes..."
+              showTrigger
+              showClear
+              className="h-12 rounded-xl text-base"
+            />
+            <ComboboxContent className="w-(--anchor-width)">
+              <ComboboxList>
+                {(name: string) => (
+                  <ComboboxItem key={name} value={name} className="min-h-11 text-base">
+                    {name}
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+              <ComboboxEmpty>No programmes matched your search.</ComboboxEmpty>
+            </ComboboxContent>
+          </Combobox>
 
           {triggerLabel && (
             <button
