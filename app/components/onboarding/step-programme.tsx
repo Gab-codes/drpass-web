@@ -10,7 +10,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { useOnboardingStore } from "@/store/onboarding-store";
-import { PROGRAMMES, getRecommendedSubjectIds } from "@/data/programmes";
+import { PROGRAMME_NAMES, getProgrammeById, getProgrammeByName, getRecommendedSubjectIds } from "@/data/programmes";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
@@ -25,7 +25,7 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
   const { preferredName, intendedProgramme, setIntendedProgramme, setSubjects } = useOnboardingStore();
   const [selectedId, setSelectedId] = useState<string>(intendedProgramme?.id || "");
 
-  const selectedProgramme = PROGRAMMES.find((p) => p.id === selectedId) || null;
+  const selectedProgramme = getProgrammeById(selectedId) || null;
   const isManual = selectedId === MANUAL_SELECTION;
 
   const handleSelect = (value: string) => {
@@ -37,7 +37,7 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
       setSelectedId("");
       return;
     }
-    const programme = PROGRAMMES.find((p) => p.name === name);
+    const programme = getProgrammeByName(name);
     if (programme) {
       setSelectedId(programme.id);
     }
@@ -89,7 +89,8 @@ export function StepProgramme({ onNext, onBack }: StepProgrammeProps) {
             Intended Programme
           </label>
           <Combobox
-            items={PROGRAMMES.map((p) => p.name)}
+            items={PROGRAMME_NAMES}
+            limit={30}
             value={isManual ? null : selectedProgramme?.name || null}
             onValueChange={handleProgrammeChange}
           >
