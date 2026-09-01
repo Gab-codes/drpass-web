@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/api/auth";
@@ -13,10 +14,11 @@ export default function UserLayout() {
     retry: false,
   });
 
-  if (isError) {
-    navigate("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoading && isError) {
+      navigate("/login", { replace: true });
+    }
+  }, [isLoading, isError, navigate]);
 
   if (isLoading || !user) {
     return (
