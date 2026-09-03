@@ -14,6 +14,7 @@ export default [
   //User routes
   layout("layout/user-layout.tsx", [
     route("dashboard", "routes/user/dashboard.tsx"),
+    route("syllabus", "routes/user/syllabus.tsx"),
     route("practice", "routes/user/practice/setup.tsx"),
   ]),
 
