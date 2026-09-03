@@ -6,6 +6,8 @@ import {
   DashboardSquare01Icon,
   Logout01Icon,
   Mortarboard01Icon,
+  PencilEdit02Icon,
+  BookOpen01Icon,
 } from "@hugeicons/core-free-icons";
 
 import {
@@ -49,6 +51,18 @@ const navItems: NavItem[] = [
     title: "Dashboard",
     url: "/dashboard",
     icon: DashboardSquare01Icon,
+    end: true,
+  },
+  {
+    title: "Syllabus",
+    url: "/syllabus",
+    icon: BookOpen01Icon,
+    end: true,
+  },
+  {
+    title: "Quick Practice",
+    url: "/practice",
+    icon: PencilEdit02Icon,
     end: true,
   },
 ];
