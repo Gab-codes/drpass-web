@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
 
 import { loginSchema, type LoginInput } from "@/validation/auth";
 import { login } from "@/api/auth";
@@ -34,8 +35,8 @@ export default function LoginPage() {
     mutationFn: login,
     onSuccess: (response) => {
       // Invalidate the current user query so it fetches the new session
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+
       const role = response?.data?.user?.role;
       navigate(role === "admin" ? "/admin" : "/dashboard");
     },

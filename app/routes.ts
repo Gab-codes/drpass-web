@@ -9,13 +9,14 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/auth/login.tsx"),
   route("register", "routes/auth/register.tsx"),
-  route("onboarding", "routes/onboarding.tsx"),
-
-  //User routes
-  layout("layout/user-layout.tsx", [
-    route("dashboard", "routes/user/dashboard.tsx"),
-    route("syllabus", "routes/user/syllabus.tsx"),
-    route("practice", "routes/user/practice/setup.tsx"),
+  //User routes — onboarding is authenticated but shell-less
+  layout("layout/authenticated-layout.tsx", [
+    route("onboarding", "routes/onboarding.tsx"),
+    layout("layout/student-layout.tsx", [
+      route("dashboard", "routes/user/dashboard.tsx"),
+      route("syllabus", "routes/user/syllabus.tsx"),
+      route("practice", "routes/user/practice/setup.tsx"),
+    ]),
   ]),
 
   // Exam routes

@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
 
 import { registerSchema, type RegisterInput } from "@/validation/auth";
 import { register as registerUser } from "@/api/auth";
@@ -35,7 +36,7 @@ export default function RegisterPage() {
     mutationFn: registerUser,
     onSuccess: () => {
       // Invalidate the current user query so it fetches the new session
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
       navigate("/onboarding");
     },
     onError: (error: any) => {
