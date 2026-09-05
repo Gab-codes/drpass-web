@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/api/auth";
+import { getOnboardingState, onboardingKeys } from "@/api/onboarding";
 import { useOnboardingStore } from "@/store/onboarding-store";
 
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
@@ -13,21 +14,34 @@ import { Loading03Icon } from "@hugeicons/core-free-icons";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const { onboardingCompleted } = useOnboardingStore();
+  const { onboardingCompleted, completeOnboarding } = useOnboardingStore();
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
-  const { data: user, isPending, isError } = useQuery({
+  const {
+    data: user,
+    isPending,
+    isError,
+  } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: getCurrentUser,
   });
 
+  // Backend is authoritative for whether onboarding is already completed
+  // (e.g. re-login on a fresh device with empty localStorage). The local
+  // draft is never overwritten by backend data.
+  const { data: onboardingState } = useQuery({
+    queryKey: onboardingKeys.state(),
+    queryFn: getOnboardingState,
+  });
+
   useEffect(() => {
     // If onboarding is completed, they shouldn't be here
-    if (onboardingCompleted) {
+    if (onboardingCompleted || onboardingState?.onboardingCompleted) {
+      if (!onboardingCompleted) completeOnboarding();
       navigate("/dashboard", { replace: true });
     }
-  }, [onboardingCompleted, navigate]);
+  }, [onboardingCompleted, onboardingState, completeOnboarding, navigate]);
 
   useEffect(() => {
     // If user fetch fails (unauthenticated), redirect to login
@@ -39,7 +53,10 @@ export default function OnboardingPage() {
   if (isPending || !user) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
-        <HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground size-8" />
+        <HugeiconsIcon
+          icon={Loading03Icon}
+          className="animate-spin text-muted-foreground size-8"
+        />
       </div>
     );
   }
@@ -54,12 +71,8 @@ export default function OnboardingPage() {
       {step === 1 && (
         <StepWelcome onNext={nextStep} defaultName={defaultName} />
       )}
-      {step === 2 && (
-        <StepProgramme onNext={nextStep} onBack={prevStep} />
-      )}
-      {step === 3 && (
-        <StepSubjects onBack={prevStep} />
-      )}
+      {step === 2 && <StepProgramme onNext={nextStep} onBack={prevStep} />}
+      {step === 3 && <StepSubjects onBack={prevStep} />}
     </OnboardingShell>
   );
 }

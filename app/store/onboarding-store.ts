@@ -50,7 +50,16 @@ export const useOnboardingStore = create<OnboardingState>()(
         return { subjects: state.subjects.filter(s => s !== subjectId) };
       }),
       
-      completeOnboarding: () => set({ onboardingCompleted: true }),
+      completeOnboarding: () =>
+        set({
+          // Backend is now the source of truth; keep the completion flag
+          // persisted but clear the temporary draft so no stale local state
+          // can make the UI think onboarding is still in progress.
+          preferredName: null,
+          intendedProgramme: null,
+          subjects: [COMPULSORY_SUBJECT],
+          onboardingCompleted: true,
+        }),
       
       resetOnboarding: () => set({
         preferredName: null,
