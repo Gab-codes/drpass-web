@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getOnboardingState, onboardingKeys } from "@/api/onboarding";
 import { getCurrentUser } from "@/api/auth";
 import { USER_QUERY_KEY } from "@/hooks/use-user";
 import { useOnboardingStore } from "@/store/onboarding-store";
@@ -14,14 +13,6 @@ import OnboardingPage from "@/routes/onboarding";
 vi.mock("@/api/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
-
-vi.mock("@/api/onboarding", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/api/onboarding")>();
-  return {
-    ...actual,
-    getOnboardingState: vi.fn(),
-  };
-});
 
 // The step flow is covered by its own component/store/API tests; stub the
 // steps so this test can assert page-level wiring (user name, navigation).
@@ -43,25 +34,26 @@ vi.mock("@/components/onboarding/step-subjects", () => ({
 }));
 
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
-const mockedGetOnboardingState = vi.mocked(getOnboardingState);
 
-const user: UserResponse = {
+const incompleteUser: UserResponse = {
   id: "u1",
   name: "Gabriel Okafor",
   email: "gabriel@example.com",
   emailVerified: true,
   image: null,
   role: "user",
+  preferredName: null,
+  onboardingCompleted: false,
+  programme: null,
+  subjects: [],
 };
 
-function renderOnboarding() {
+function renderOnboarding(user: UserResponse = incompleteUser) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   // AuthenticatedLayout has already resolved the user upstream
-  queryClient.setQueryData(USER_QUERY_KEY, {
-    ...user,
-  });
+  queryClient.setQueryData(USER_QUERY_KEY, user);
 
   const utils = render(
     <QueryClientProvider client={queryClient}>
@@ -82,20 +74,22 @@ describe("OnboardingPage", () => {
     vi.clearAllMocks();
     useOnboardingStore.getState().resetOnboarding();
     localStorage.removeItem("drpass-onboarding-storage");
-    mockedGetOnboardingState.mockResolvedValue({
-      preferredName: null,
-      programme: null,
-      subjects: [],
-      onboardingCompleted: false,
-    });
   });
 
-  it("does not perform its own /me query", async () => {
+  it("does not perform its own /me query", () => {
     renderOnboarding();
 
     expect(mockedGetCurrentUser).not.toHaveBeenCalled();
+  });
 
-    await waitFor(() => expect(mockedGetOnboardingState).toHaveBeenCalled());
+  it("does not call the onboarding state endpoint — completion comes from /auth/me", () => {
+    const { queryClient } = renderOnboarding();
+
+    // The redundant GET /users/me/onboarding read was removed; the cache
+    // must not contain an onboarding state entry.
+    expect(
+      queryClient.getQueryState(["onboarding", "state"]),
+    ).toBeUndefined();
   });
 
   it("still accesses the authenticated user correctly", async () => {
@@ -109,15 +103,11 @@ describe("OnboardingPage", () => {
     );
   });
 
-  it("redirects to /dashboard when the backend reports onboarding already completed", async () => {
-    mockedGetOnboardingState.mockResolvedValue({
-      preferredName: "Gabriel",
-      programme: null,
-      subjects: [],
+  it("redirects completed users to /dashboard based on the canonical user", async () => {
+    const { container } = renderOnboarding({
+      ...incompleteUser,
       onboardingCompleted: true,
     });
-
-    const { container } = renderOnboarding();
 
     await waitFor(() => expect(container).toHaveTextContent("DASHBOARD PAGE"));
   });
@@ -129,11 +119,5 @@ describe("OnboardingPage", () => {
       expect(getByTestId("onboarding-shell")).toBeInTheDocument(),
     );
     expect(getByTestId("step-welcome")).toBeInTheDocument();
-  });
-});
-
-describe("onboardingKeys", () => {
-  it("keeps a stable state query key", () => {
-    expect(onboardingKeys.state()).toBeDefined();
   });
 });

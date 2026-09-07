@@ -1,4 +1,5 @@
-import { Outlet } from "react-router";
+import { useEffect } from "react";
+import { Outlet, useNavigate } from "react-router";
 
 import { useUser } from "@/hooks/use-user";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -12,11 +13,25 @@ import { StudentSidebar } from "@/components/student/student-sidebar";
  * inside `AuthenticatedLayout`, which guarantees the user is
  * resolved; the user is read from the shared query cache via
  * `useUser()`.
+ *
+ * Also owns the onboarding guard for direct navigation: an
+ * authenticated student who has not completed onboarding cannot reach
+ * any student route by typing a protected URL. The completion state
+ * comes solely from the canonical `/auth/me` user.
  */
 export default function StudentLayout() {
   const { user } = useUser();
+  const navigate = useNavigate();
 
-  if (!user) return null;
+  useEffect(() => {
+    if (user && !user.onboardingCompleted) {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [user, navigate]);
+
+  // While redirecting an incomplete user, render nothing rather than
+  // flashing the application shell.
+  if (!user || !user.onboardingCompleted) return null;
 
   return (
     <SidebarProvider>

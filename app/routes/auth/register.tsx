@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { USER_QUERY_KEY } from "@/hooks/use-user";
 
 import { registerSchema, type RegisterInput } from "@/validation/auth";
-import { register as registerUser } from "@/api/auth";
+import { register as registerUser, getCurrentUser } from "@/api/auth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +34,14 @@ export default function RegisterPage() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: registerUser,
-    onSuccess: () => {
-      // Invalidate the current user query so it fetches the new session
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+    onSuccess: async () => {
+      // Establish the session, then refresh the canonical current-user query
+      // exactly once so /onboarding reads fresh canonical state.
+      await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+      await queryClient.fetchQuery({
+        queryKey: USER_QUERY_KEY,
+        queryFn: getCurrentUser,
+      });
       navigate("/onboarding");
     },
     onError: (error: any) => {

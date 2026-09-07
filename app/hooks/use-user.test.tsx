@@ -22,6 +22,10 @@ const user: UserResponse = {
   emailVerified: true,
   image: null,
   role: "user",
+  preferredName: "Gaby",
+  onboardingCompleted: true,
+  programme: null,
+  subjects: [],
 };
 
 function createWrapper() {

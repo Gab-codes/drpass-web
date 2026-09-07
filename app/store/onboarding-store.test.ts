@@ -17,7 +17,7 @@ describe("onboarding store", () => {
     ]);
   });
 
-  it("marks completion and clears the temporary draft", () => {
+  it("clears the temporary draft on completion", () => {
     const store = useOnboardingStore.getState();
     store.setPreferredName("Gabriel");
     store.setIntendedProgramme({
@@ -30,19 +30,20 @@ describe("onboarding store", () => {
     useOnboardingStore.getState().completeOnboarding();
 
     const state = useOnboardingStore.getState();
-    expect(state.onboardingCompleted).toBe(true);
-    // Backend is the source of truth after submission; the draft is cleared.
+    // The backend — not this store — owns onboarding completion; the store
+    // is draft-only and must not carry any account-state flag.
+    expect(state).not.toHaveProperty("onboardingCompleted");
     expect(state.preferredName).toBeNull();
     expect(state.intendedProgramme).toBeNull();
     expect(state.subjects).toEqual([COMPULSORY_SUBJECT]);
   });
 
-  it("does not mark onboarding complete on reset", () => {
-    useOnboardingStore.getState().completeOnboarding();
+  it("resets the draft", () => {
+    useOnboardingStore.getState().setPreferredName("Gabriel");
     useOnboardingStore.getState().resetOnboarding();
 
     const state = useOnboardingStore.getState();
-    expect(state.onboardingCompleted).toBe(false);
+    expect(state.preferredName).toBeNull();
     expect(state.subjects).toEqual([COMPULSORY_SUBJECT]);
   });
 });

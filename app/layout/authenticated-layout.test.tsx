@@ -20,12 +20,21 @@ const user: UserResponse = {
   emailVerified: true,
   image: null,
   role: "user",
+  preferredName: "Gaby",
+  onboardingCompleted: true,
+  programme: null,
+  subjects: [],
 };
 
 function renderLayout({
   resolvedUser,
   error,
-}: { resolvedUser?: UserResponse; error?: Error } = {}) {
+  noUser,
+}: {
+  resolvedUser?: UserResponse;
+  error?: Error;
+  noUser?: boolean;
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -34,6 +43,9 @@ function renderLayout({
     queryClient.setQueryData(["auth", "me"], undefined);
     // Seed the cache with a rejected promise so isLoading is false
     mockedGetCurrentUser.mockRejectedValue(error);
+  } else if (noUser) {
+    // A settled request without a usable user payload.
+    mockedGetCurrentUser.mockResolvedValue(undefined as never);
   } else if (resolvedUser) {
     mockedGetCurrentUser.mockResolvedValue(resolvedUser);
   } else {
@@ -87,6 +99,17 @@ describe("AuthenticatedLayout", () => {
 
     // Access boundary only — no sidebar/header shell
     expect(container).not.toHaveTextContent("DrPass");
+    expect(container.querySelector(".animate-spin")).not.toBeInTheDocument();
+  });
+
+  it("redirects to /login when the request settles without a user", async () => {
+    // A 200 response without a usable user payload must not leave the
+    // layout stuck on the spinner — it redirects to /login instead.
+    const { container } = renderLayout({ noUser: true });
+
+    await waitFor(() =>
+      expect(container).toHaveTextContent("LOGIN PAGE"),
+    );
     expect(container.querySelector(".animate-spin")).not.toBeInTheDocument();
   });
 });

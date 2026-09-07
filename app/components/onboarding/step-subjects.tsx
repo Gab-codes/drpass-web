@@ -20,6 +20,8 @@ import {
   onboardingKeys,
   submitOnboardingApi,
 } from "@/api/onboarding";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
+import type { UserResponse } from "@/types/auth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LockKeyIcon } from "@hugeicons/core-free-icons";
@@ -54,12 +56,38 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
   });
 
   // Single final submission. On failure the draft stays intact so the student
-  // can simply retry; only a successful response marks onboarding complete.
+  // can simply retry; only a successful PATCH response marks onboarding complete.
   const submitMutation = useMutation({
     mutationFn: submitOnboardingApi,
-    onSuccess: () => {
+    onSuccess: (response) => {
+      // The backend must confirm completion; otherwise treat it as a
+      // failure and keep the draft so the student can retry.
+      if (!response.onboardingCompleted) {
+        setErrorMsg(
+          "We couldn't save your onboarding. Please try again.",
+        );
+        return;
+      }
+
+      // Only after the PATCH succeeded: clear the persisted draft...
       completeOnboarding();
-      void queryClient.invalidateQueries({ queryKey: onboardingKeys.state() });
+
+      // ...and update the canonical current-user cache from the PATCH
+      // response (backend-authoritative). The cache must reflect
+      // onboardingCompleted: true BEFORE navigating, so the student-route
+      // guard cannot bounce back to /onboarding on stale data.
+      queryClient.setQueryData<UserResponse>(USER_QUERY_KEY, (old) =>
+        old
+          ? {
+              ...old,
+              preferredName: response.preferredName,
+              programme: response.programme,
+              subjects: response.subjects,
+              onboardingCompleted: true,
+            }
+          : old,
+      );
+
       navigate("/dashboard");
     },
     onError: (error) => {

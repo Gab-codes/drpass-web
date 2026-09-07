@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,15 +22,25 @@ const user: UserResponse = {
   emailVerified: true,
   image: null,
   role: "user",
+  preferredName: "Gaby",
+  onboardingCompleted: true,
+  programme: null,
+  subjects: [],
 };
 
-function renderStudentLayout() {
+const incompleteUser: UserResponse = {
+  ...user,
+  preferredName: null,
+  onboardingCompleted: false,
+};
+
+function renderStudentLayout(resolvedUser: UserResponse = user) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   // The user is already resolved by AuthenticatedLayout upstream; seed
   // the shared cache so the layout must read it, not fetch it.
-  queryClient.setQueryData(USER_QUERY_KEY, user);
+  queryClient.setQueryData(USER_QUERY_KEY, resolvedUser);
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -39,6 +49,7 @@ function renderStudentLayout() {
           <Route path="/" element={<StudentLayout />}>
             <Route path="dashboard" element={<div>DASHBOARD PAGE</div>} />
           </Route>
+          <Route path="/onboarding" element={<div>ONBOARDING PAGE</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -62,5 +73,21 @@ describe("StudentLayout", () => {
   it("does not independently fetch /me", () => {
     renderStudentLayout();
     expect(mockedGetCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it("redirects incomplete users to /onboarding on direct navigation", async () => {
+    const { container } = renderStudentLayout(incompleteUser);
+
+    await waitFor(() =>
+      expect(container).toHaveTextContent("ONBOARDING PAGE"),
+    );
+    // The shell must not flash for an incomplete user.
+    expect(container).not.toHaveTextContent("DASHBOARD PAGE");
+  });
+
+  it("does not redirect completed users away from student routes", () => {
+    const { container } = renderStudentLayout(user);
+
+    expect(container).toHaveTextContent("DASHBOARD PAGE");
   });
 });

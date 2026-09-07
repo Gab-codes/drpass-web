@@ -11,8 +11,10 @@ import {
   onboardingKeys,
   submitOnboardingApi,
 } from "@/api/onboarding";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
 import { AxiosError } from "axios";
 import type { ApiSubject } from "@/types/onboarding";
+import type { UserResponse } from "@/types/auth";
 
 vi.mock("@/store/onboarding-store", () => ({
   useOnboardingStore: vi.fn(),
@@ -60,27 +62,47 @@ function renderStep() {
     { id: "uuid-phy", name: "Physics", code: "PHY" },
     { id: "uuid-chm", name: "Chemistry", code: "CHM" },
   ]);
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/onboarding"]}>
-        <Routes>
-          <Route
-            path="/onboarding"
-            element={<StepSubjects onBack={() => {}} />}
-          />
-          <Route path="/dashboard" element={<div>dashboard</div>} />
-          <Route path="/login" element={<div>login</div>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  // Seed the canonical current-user cache with the pre-onboarding user so
+  // the success path's cache merge has something authoritative to update.
+  const baseUser: UserResponse = {
+    id: "u1",
+    name: "Gabriel Okafor",
+    email: "gabriel@example.com",
+    emailVerified: true,
+    image: null,
+    role: "user",
+    preferredName: null,
+    onboardingCompleted: false,
+    programme: null,
+    subjects: [],
+  };
+  queryClient.setQueryData(USER_QUERY_KEY, baseUser);
+  return { queryClient, render: renderUi() };
+
+  function renderUi() {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/onboarding"]}>
+          <Routes>
+            <Route
+              path="/onboarding"
+              element={<StepSubjects onBack={() => {}} />}
+            />
+            <Route path="/dashboard" element={<div>dashboard</div>} />
+            <Route path="/login" element={<div>login</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
 }
 
 // Flush pending promises (the subjects query) so the component has the
 // canonical catalogue before the submission click.
 async function renderAndSettle() {
-  renderStep();
+  const { queryClient, render: rendered } = renderStep();
   await act(async () => {});
+  return { queryClient, ...rendered };
 }
 
 describe("StepSubjects final submission", () => {
@@ -117,6 +139,56 @@ describe("StepSubjects final submission", () => {
       subjectIds: ["uuid-eng", "uuid-mth", "uuid-phy", "uuid-chm"],
     });
     expect(draft.completeOnboarding).toHaveBeenCalledTimes(1);
+  });
+
+  it("reflects onboardingCompleted: true in the canonical user cache before navigating", async () => {
+    mockedUseOnboardingStore.mockReturnValue(draft);
+    mockedSubmitOnboardingApi.mockResolvedValue({
+      preferredName: "Gabriel",
+      programme: null,
+      subjects: [],
+      onboardingCompleted: true,
+    });
+
+    const { queryClient } = await renderAndSettle();
+    fireEvent.click(completeButton());
+
+    await waitFor(() => {
+      expect(screen.getByText("dashboard")).toBeInTheDocument();
+    });
+
+    // The PATCH response is authoritative: by the time /dashboard renders,
+    // the canonical ["auth", "me"] cache must already be completed, so the
+    // student-route guard cannot bounce back to /onboarding.
+    const user = queryClient.getQueryData<UserResponse>(USER_QUERY_KEY);
+    expect(user?.onboardingCompleted).toBe(true);
+    expect(user?.preferredName).toBe("Gabriel");
+  });
+
+  it("treats a PATCH response without completion confirmation as a failure", async () => {
+    mockedUseOnboardingStore.mockReturnValue(draft);
+    mockedSubmitOnboardingApi.mockResolvedValue({
+      preferredName: "Gabriel",
+      programme: null,
+      subjects: [],
+      onboardingCompleted: false,
+    });
+
+    const { queryClient } = await renderAndSettle();
+    fireEvent.click(completeButton());
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/couldn't save your onboarding/i),
+      ).toBeInTheDocument();
+    });
+    // Draft is preserved for retry; no navigation, no cache update.
+    expect(draft.completeOnboarding).not.toHaveBeenCalled();
+    expect(
+      queryClient.getQueryData<UserResponse>(USER_QUERY_KEY)
+        ?.onboardingCompleted,
+    ).toBe(false);
+    expect(screen.queryByText("dashboard")).not.toBeInTheDocument();
   });
 
   it("does not mark onboarding complete on failure and allows a retry", async () => {
