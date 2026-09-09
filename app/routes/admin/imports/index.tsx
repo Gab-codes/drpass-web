@@ -54,7 +54,7 @@ import type {
 import type { ImportQuestionsResult } from "@/types/questions";
 
 const SOURCE_OPTIONS = ["JAMB", "WAEC", "NECO", "GCE"] as const;
-type KnownSource = typeof SOURCE_OPTIONS[number];
+type KnownSource = (typeof SOURCE_OPTIONS)[number];
 
 function isKnownSource(value: string | null): value is KnownSource {
   return SOURCE_OPTIONS.includes(value as KnownSource);
@@ -84,7 +84,9 @@ export default function Imports() {
 
   // ── Source state ──────────────────────────────────────────────────────────
   /** Hint from the parser — never authoritative */
-  const [detectedSource, setDetectedSource] = React.useState<string | null>(null);
+  const [detectedSource, setDetectedSource] = React.useState<string | null>(
+    null,
+  );
   /** Admin-selected source — authoritative, required before submission */
   const [importSource, setImportSource] = React.useState<string | null>(null);
 
@@ -372,7 +374,9 @@ export default function Imports() {
       setStatus("preview");
     } catch (err) {
       clearInterval(progressInterval);
-      setParseError(err instanceof Error ? err.message : "Failed to parse file");
+      setParseError(
+        err instanceof Error ? err.message : "Failed to parse file",
+      );
       setStatus("error");
     }
   }
@@ -407,14 +411,16 @@ export default function Imports() {
       <Separator className="my-2" />
 
       {/* ── Draft banner (idle only, before any action this session) ── */}
-      {(status === "idle" || status === "error") && draftExists && !draftHandled && (
-        <DraftBanner
-          savedAt={draft.savedAt}
-          questionCount={draft.questions.length}
-          onRestore={handleRestoreDraft}
-          onDiscard={handleDiscardDraft}
-        />
-      )}
+      {(status === "idle" || status === "error") &&
+        draftExists &&
+        !draftHandled && (
+          <DraftBanner
+            savedAt={draft.savedAt}
+            questionCount={draft.questions.length}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+          />
+        )}
 
       {/* ── IDLE / UPLOAD ── */}
       {(status === "idle" || status === "error") && (
@@ -505,14 +511,17 @@ export default function Imports() {
       )}
 
       {/* ── New-upload guard dialog ── */}
-      <Dialog open={showUploadGuard} onOpenChange={(v) => !v && setShowUploadGuard(false)}>
+      <Dialog
+        open={showUploadGuard}
+        onOpenChange={(v) => !v && setShowUploadGuard(false)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>You have a saved draft</DialogTitle>
             <DialogDescription>
               You have a draft with {draft.questions.length} question
-              {draft.questions.length === 1 ? "" : "s"} saved from a previous session.
-              What would you like to do?
+              {draft.questions.length === 1 ? "" : "s"} saved from a previous
+              session. What would you like to do?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -558,7 +567,6 @@ export default function Imports() {
             : undefined
         }
       />
-
 
       <QuestionEditDialog
         question={editQuestion}
@@ -657,7 +665,9 @@ function ImportSourceSelector({
           value={selectedSource ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
           className={`flex h-9 rounded-md border bg-background px-3 py-1 text-sm shadow-sm ${
-            !selectedSource ? "border-destructive text-destructive" : "border-input"
+            !selectedSource
+              ? "border-destructive text-destructive"
+              : "border-input"
           }`}
           aria-label="Import source"
         >
@@ -881,16 +891,13 @@ function SubmissionFooter({
           )}
           {!importSource && (
             <p className="text-xs font-medium text-destructive">
-              No source selected. Choose JAMB, WAEC, NECO, or GCE before importing.
+              No source selected. Choose JAMB, WAEC, NECO, or GCE before
+              importing.
             </p>
           )}
         </div>
 
-        <Button
-          size="lg"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-        >
+        <Button size="lg" onClick={onSubmit} disabled={!canSubmit}>
           {isSubmitting ? (
             <>
               <HugeiconsIcon
@@ -952,10 +959,7 @@ function SubmittedSection({
           Import Another File
         </Button>
         {result.importId && (
-          <Button
-            variant="ghost"
-            render={<Link to={`/admin/imports/${result.importId}`} />}
-          >
+          <Button variant="ghost" render={<Link to="/admin/questions" />}>
             View Import →
           </Button>
         )}
