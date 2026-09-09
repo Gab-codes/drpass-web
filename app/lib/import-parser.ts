@@ -684,7 +684,19 @@ export async function parseXlsx(
   file: File,
 ): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
   const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: "array", bookProps: true });
+
+  // SheetJS 0.18.x: `type: "array"` requires a Uint8Array, not a bare ArrayBuffer.
+  // `file.arrayBuffer()` returns a raw ArrayBuffer, so it must be wrapped.
+  // Do NOT pass `bookProps: true` — in 0.18.x that flag makes XLSX.read return
+  // only { Props, Custprops } instead of a full workbook, causing SheetNames to
+  // be undefined. A normal read already includes wb.Props.
+  const wb = XLSX.read(new Uint8Array(buffer));
+
+  if (!Array.isArray(wb.SheetNames) || wb.SheetNames.length === 0) {
+    throw new Error(
+      "Unable to read this XLSX file. The file may be corrupted or in an unsupported format.",
+    );
+  }
 
   // Workbook-level source detection — runs once before iterating sheets
   const detectedSource = detectSourceFromWorkbook(wb, file.name);

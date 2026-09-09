@@ -1,3 +1,18 @@
+/**
+ * QuestionReviewDialog (import workflow)
+ *
+ * Read-only review of a ParsedQuestion during the import workflow.
+ * Shows import-specific metadata: status, statusReason, duplicate info.
+ *
+ * When not readOnly, provides an "Edit Question" action that transitions
+ * this dialog directly into edit mode (no nested second dialog).
+ *
+ * Responsibilities:
+ *   - import status / statusReason / duplicate badge
+ *   - view mode via QuestionFieldsForm readOnly
+ *   - in-place edit mode transition via QuestionEditDialog
+ */
+
 import * as React from "react";
 import {
   Dialog,
@@ -7,25 +22,18 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { ParsedQuestion, AnswerOption } from "@/types/import-types";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Edit01Icon } from "@hugeicons/core-free-icons";
 import { statusBadgeClass, statusLabel } from "@/lib/import-status";
 import { QuestionEditDialog } from "@/components/admin/imports/QuestionEditDialog";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  Edit01Icon,
-  Image01Icon,
-  AlertCircleIcon,
-} from "@hugeicons/core-free-icons";
+import type { ParsedQuestion } from "@/types/import-types";
 
 interface QuestionReviewDialogProps {
   question: ParsedQuestion | null;
   open: boolean;
   onClose: () => void;
   onEdit?: (q: ParsedQuestion) => void;
-  /** If provided, show duplicate review link */
+  /** If provided, show duplicate comparison link */
   onReviewDuplicate?: () => void;
   readOnly?: boolean;
 }
@@ -40,32 +48,15 @@ export function QuestionReviewDialog({
 }: QuestionReviewDialogProps) {
   const [editOpen, setEditOpen] = React.useState(false);
 
+  // Close edit dialog when review dialog closes
+  React.useEffect(() => {
+    if (!open) setEditOpen(false);
+  }, [open]);
+
   if (!question) return null;
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !onEdit || !question) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (!question) return;
-      onEdit({
-        ...question,
-        image: event.target?.result as string,
-        isEdited: true,
-      });
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function handleHasImageChange(checked: boolean) {
-    if (!onEdit || !question) return;
-    onEdit({
-      ...question,
-      hasImage: checked,
-      image: checked ? question.image : null,
-      isEdited: true,
-    });
-  }
+  const isChoiceType =
+    question.type === "SINGLE_CHOICE" || question.type === "MULTIPLE_CHOICE";
 
   return (
     <>
@@ -108,24 +99,16 @@ export function QuestionReviewDialog({
                 )}
               </div>
             )}
-            {/* Metadata Grid */}
+
+            {/* Metadata grid */}
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-4 border border-border">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</p>
-                <p className="text-sm font-medium">{question.type || <span className="italic text-muted-foreground">Unknown</span>}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
-                <p className="text-sm font-medium">{question.source || <span className="italic text-muted-foreground">None</span>}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Difficulty</p>
-                <p className="text-sm font-medium">{question.difficulty || <span className="italic text-muted-foreground">None</span>}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Explanation</p>
-                <p className="text-sm font-medium">{question.explanation ? "Provided" : <span className="italic text-muted-foreground">None</span>}</p>
-              </div>
+              <MetaField label="Type" value={question.type} />
+              <MetaField label="Source" value={question.source} />
+              <MetaField label="Difficulty" value={question.difficulty} />
+              <MetaField
+                label="Explanation"
+                value={question.explanation ? "Provided" : null}
+              />
             </div>
 
             {/* Question text */}
@@ -142,111 +125,24 @@ export function QuestionReviewDialog({
               </p>
             </div>
 
-            {/* Image Section */}
-            {(question.hasImage || (!readOnly && onEdit)) && (
-              <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/10">
-                <div className="flex flex-row items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label
-                      htmlFor="review-has-image"
-                      className="text-base font-semibold flex items-center gap-1.5"
-                    >
-                      <HugeiconsIcon icon={Image01Icon} className="h-4 w-4" />
-                      Image Attachment
-                    </Label>
-                    {!readOnly && onEdit && (
-                      <p className="text-sm text-muted-foreground">
-                        Does this question require an image?
-                      </p>
-                    )}
-                  </div>
-                  {!readOnly && onEdit ? (
-                    <Switch
-                      id="review-has-image"
-                      checked={question.hasImage}
-                      onCheckedChange={handleHasImageChange}
+            {/* Image */}
+            {question.hasImage && (
+              <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/10">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Image
+                </p>
+                {question.image ? (
+                  <div className="relative inline-block border border-border rounded-md overflow-hidden max-w-sm">
+                    <img
+                      src={question.image}
+                      alt="Question diagram"
+                      className="max-h-48 object-contain bg-muted/50"
                     />
-                  ) : (
-                    question.hasImage && (
-                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                        Yes
-                      </span>
-                    )
-                  )}
-                </div>
-
-                {question.hasImage && (
-                  <div className="pt-2">
-                    {question.image ? (
-                      <div className="space-y-2">
-                        <div className="relative inline-block border border-border rounded-md overflow-hidden max-w-sm">
-                          <img
-                            src={question.image}
-                            alt="Question diagram"
-                            className="max-h-48 object-contain bg-muted/50"
-                          />
-                        </div>
-                        {!readOnly && onEdit && (
-                          <div className="flex gap-2">
-                            <Label
-                              htmlFor="review-replace-image"
-                              className="cursor-pointer"
-                            >
-                              <div className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 py-1 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
-                                Replace Image
-                              </div>
-                              <input
-                                id="review-replace-image"
-                                type="file"
-                                accept="image/png, image/jpeg, image/webp"
-                                className="hidden"
-                                onChange={handleImageUpload}
-                              />
-                            </Label>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              type="button"
-                              onClick={() =>
-                                onEdit({
-                                  ...question,
-                                  image: null,
-                                  isEdited: true,
-                                })
-                              }
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {!readOnly && onEdit ? (
-                          <>
-                            <Input
-                              type="file"
-                              accept="image/png, image/jpeg, image/webp"
-                              onChange={handleImageUpload}
-                              className="border-destructive"
-                            />
-                            <p className="flex items-center gap-1 text-xs text-destructive">
-                              <HugeiconsIcon
-                                icon={AlertCircleIcon}
-                                className="h-3 w-3"
-                              />
-                              Image is required because this question is marked
-                              as containing an image.
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm italic text-muted-foreground">
-                            Image missing
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">
+                    Image missing
+                  </p>
                 )}
               </div>
             )}
@@ -257,7 +153,7 @@ export function QuestionReviewDialog({
                 Options
               </p>
               <div className="space-y-1.5">
-                {question.type === "SINGLE_CHOICE" || question.type === "MULTIPLE_CHOICE" ? (
+                {isChoiceType ? (
                   question.options.map((opt) => {
                     const isCorrect = Array.isArray(question.correctAnswer)
                       ? question.correctAnswer.includes(opt.key)
@@ -292,14 +188,19 @@ export function QuestionReviewDialog({
                   })
                 ) : (
                   <div className="text-sm">
-                    <span className="font-semibold text-primary">Correct Answer:</span>{" "}
-                    {Array.isArray(question.correctAnswer) ? question.correctAnswer.join(", ") : question.correctAnswer}
+                    <span className="font-semibold text-primary">
+                      Correct Answer:{" "}
+                    </span>
+                    {Array.isArray(question.correctAnswer)
+                      ? question.correctAnswer.join(", ")
+                      : question.correctAnswer}
                   </div>
                 )}
               </div>
             </div>
           </div>
 
+          {/* Edit action */}
           {!readOnly && onEdit && (
             <div className="flex justify-end border-t border-border pt-4">
               <Button
@@ -315,7 +216,7 @@ export function QuestionReviewDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Nested edit dialog — opens on top */}
+      {/* Edit dialog — opens alongside review dialog (review stays open in background) */}
       {!readOnly && onEdit && (
         <QuestionEditDialog
           question={editOpen ? question : null}
@@ -329,5 +230,26 @@ export function QuestionReviewDialog({
         />
       )}
     </>
+  );
+}
+
+// ─── Small helper ─────────────────────────────────────────────────────────────
+
+function MetaField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm font-medium">
+        {value ?? <span className="italic text-muted-foreground">None</span>}
+      </p>
+    </div>
   );
 }

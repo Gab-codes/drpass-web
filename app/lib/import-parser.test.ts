@@ -567,3 +567,50 @@ describe("extractQuestionNumber", () => {
     expect(result.cleanText).toBe("No prefix here");
   });
 });
+
+import * as XLSX from "xlsx";
+import { parseXlsx } from "./import-parser";
+
+describe("parseXlsx", () => {
+  const createMockFile = (wb: XLSX.WorkBook, name: string): File => {
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    return {
+      name,
+      arrayBuffer: async () => arrayBuffer,
+    } as unknown as File;
+  };
+
+  test("parses a valid XLSX workbook with multiple sheets", async () => {
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet([
+      ["Year", "Subject", "Question", "A", "B", "C", "D", "Answer"],
+      [2020, "Biology", "What is 2+2?", "3", "4", "5", "6", "B"],
+    ]);
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      ["Year", "Subject", "Question", "A", "B", "C", "D", "Answer"],
+      [2021, "Chemistry", "Name a noble gas.", "Neon", "Gold", "Iron", "Carbon", "A"],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
+    XLSX.utils.book_append_sheet(wb, ws2, "Chemistry 2021");
+
+    const file = createMockFile(wb, "test.xlsx");
+    const result = await parseXlsx(file);
+
+    expect(result.questions).toHaveLength(2);
+    expect(result.summary.totalQuestions).toBe(2);
+    expect(result.summary.years).toEqual([2020, 2021]);
+    expect(result.detectedSource).toBeNull();
+  });
+
+  test("throws a meaningful error for invalid/unreadable workbook", async () => {
+    const file = {
+      name: "corrupted.xlsx",
+      arrayBuffer: async () => new ArrayBuffer(10), // Random garbage bytes
+    } as unknown as File;
+
+    await expect(parseXlsx(file)).rejects.toThrow(
+      "Unable to read this XLSX file. The file may be corrupted or in an unsupported format."
+    );
+  });
+});
