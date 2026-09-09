@@ -144,12 +144,12 @@ describe("extractOptionText", () => {
 });
 
 describe("isInstructionRow", () => {
-  const make = (text = "", answer: "A" | "B" | "C" | "D" | null = null, options: string[] = []): Omit<ParsedQuestion, "status" | "statusReason"> => ({
+  const make = (text = "", correctAnswer: "A" | "B" | "C" | "D" | null = null, options: string[] = []): Omit<ParsedQuestion, "status" | "statusReason"> => ({
     _clientId: "q1",
     rowIndex: 1,
     text,
     options: options.map((o, i) => ({ key: ["A", "B", "C", "D"][i] as "A" | "B" | "C" | "D", text: o })),
-    answer,
+    correctAnswer,
     year: 2020,
     subject: "Math",
     rawText: text,
@@ -185,7 +185,7 @@ describe("detectStatus", () => {
       { key: "C", text: "Opt C" },
       { key: "D", text: "Opt D" },
     ],
-    answer: "A",
+    correctAnswer: "A",
     year: 2020,
     subject: "Math",
     rawText: "Valid question",
@@ -206,7 +206,7 @@ describe("detectStatus", () => {
   });
 
   test("returns error for missing answer", () => {
-    const result = detectStatus(make({ answer: null }));
+    const result = detectStatus(make({ correctAnswer: null }));
     expect(result.status).toBe("error");
     expect(result.statusReason).toBe("Missing or invalid correct answer");
   });
@@ -248,7 +248,7 @@ describe("detectDuplicates", () => {
     rowIndex: 1,
     text,
     options: [],
-    answer: null,
+    correctAnswer: null,
     year,
     subject: "",
     rawText: text,
@@ -296,7 +296,7 @@ describe("revalidateQuestions", () => {
       { key: "C", text: "Opt C" },
       { key: "D", text: "Opt D" },
     ],
-    answer: "A",
+    correctAnswer: "A",
     year: 2020,
     subject: "Math",
     rawText: "Valid question",
@@ -307,9 +307,9 @@ describe("revalidateQuestions", () => {
   });
 
   test("revalidates an edited error question into a valid question", () => {
-    const before = makeQ({ answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const before = makeQ({ correctAnswer: null, status: "error", statusReason: "Missing or invalid correct answer" });
     const after = revalidateQuestions([
-      { ...before, answer: "A" },
+      { ...before, correctAnswer: "A" },
     ]);
 
     expect(after[0].status).toBe("valid");
@@ -351,9 +351,9 @@ describe("revalidateQuestions", () => {
   });
 
   test("keeps the updated validation reason when an edit is still invalid", () => {
-    const before = makeQ({ answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const before = makeQ({ correctAnswer: null, status: "error", statusReason: "Missing or invalid correct answer" });
     const after = revalidateQuestions([
-      { ...before, answer: "A", year: null },
+      { ...before, correctAnswer: "A", year: null },
     ]);
 
     expect(after[0].status).toBe("error");
@@ -382,7 +382,7 @@ describe("revalidateQuestions", () => {
   });
 
   test("summary metrics are derived from the current question state", () => {
-    const q1 = makeQ({ _clientId: "q1", answer: null, status: "error", statusReason: "Missing or invalid correct answer" });
+    const q1 = makeQ({ _clientId: "q1", correctAnswer: null, status: "error", statusReason: "Missing or invalid correct answer" });
     const q2 = makeQ({
       _clientId: "q2",
       text: "Different warning question",
@@ -400,7 +400,7 @@ describe("revalidateQuestions", () => {
 
     const after = buildSummary(
       revalidateQuestions([
-        { ...q1, answer: "A" },
+        { ...q1, correctAnswer: "A" },
         {
           ...q2,
           text: "Different warning question",
@@ -496,7 +496,7 @@ describe("buildSummary", () => {
     rowIndex: 1,
     text: "Q",
     options: [],
-    answer: null,
+    correctAnswer: null,
     year: 2020,
     subject: "M",
     rawText: "Q",

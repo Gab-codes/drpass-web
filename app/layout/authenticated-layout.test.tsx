@@ -21,7 +21,7 @@ const user: UserResponse = {
   image: null,
   role: "user",
   preferredName: "Gaby",
-  onboardingCompleted: true,
+  onboardingCompleted: true, onboardingCompletedAt: new Date(),
   programme: null,
   subjects: [],
 };

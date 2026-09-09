@@ -43,7 +43,7 @@ const incompleteUser: UserResponse = {
   image: null,
   role: "user",
   preferredName: null,
-  onboardingCompleted: false,
+  onboardingCompleted: false, onboardingCompletedAt: null,
   programme: null,
   subjects: [],
 };
@@ -106,7 +106,7 @@ describe("OnboardingPage", () => {
   it("redirects completed users to /dashboard based on the canonical user", async () => {
     const { container } = renderOnboarding({
       ...incompleteUser,
-      onboardingCompleted: true,
+      onboardingCompleted: true, onboardingCompletedAt: new Date(),
     });
 
     await waitFor(() => expect(container).toHaveTextContent("DASHBOARD PAGE"));

@@ -128,11 +128,11 @@ function QuestionCard({
 
       {/* Options */}
       <div className="space-y-1">
-        {question.options.map((opt) => (
+        {question.options?.map((opt) => (
           <div key={opt.key} className="flex items-start gap-2">
             <span
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-bold ${
-                question.answer === opt.key
+                question.correctAnswer === opt.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
               }`}
@@ -141,7 +141,7 @@ function QuestionCard({
             </span>
             <span
               className={
-                question.answer === opt.key
+                question.correctAnswer === opt.key
                   ? "font-medium text-foreground"
                   : "text-muted-foreground"
               }
@@ -156,7 +156,7 @@ function QuestionCard({
       <div className="border-t border-border pt-2 text-xs text-muted-foreground">
         Correct answer:{" "}
         <span className="font-semibold text-foreground">
-          {question.answer ?? "—"}
+          {question.correctAnswer ?? "—"}
         </span>
       </div>
     </div>

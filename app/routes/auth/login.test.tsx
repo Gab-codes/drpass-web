@@ -32,7 +32,7 @@ const completeUser: UserResponse = {
   image: null,
   role: "user",
   preferredName: "Gaby",
-  onboardingCompleted: true,
+  onboardingCompleted: true, onboardingCompletedAt: new Date(),
   programme: null,
   subjects: [],
 };
@@ -40,7 +40,7 @@ const completeUser: UserResponse = {
 const incompleteUser: UserResponse = {
   ...completeUser,
   preferredName: null,
-  onboardingCompleted: false,
+  onboardingCompleted: false, onboardingCompletedAt: null,
 };
 
 const adminUser: UserResponse = {

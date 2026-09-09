@@ -1,4 +1,4 @@
-﻿import { act } from "react";
+import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -73,6 +73,7 @@ function renderStep() {
     role: "user",
     preferredName: null,
     onboardingCompleted: false,
+    onboardingCompletedAt: null,
     programme: null,
     subjects: [],
   };

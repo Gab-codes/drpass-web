@@ -7,6 +7,8 @@ import {
   CheckmarkCircle01Icon,
   AlertCircleIcon,
   Clock01Icon,
+  FloppyDiskIcon,
+  Rotate01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +18,14 @@ import {
   ProgressIndicator,
 } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ImportDropzone } from "@/components/admin/imports/ImportDropzone";
 import { ImportSummary } from "@/components/admin/imports/ImportSummary";
 import {
@@ -34,6 +44,7 @@ import {
 import { MOCK_QUESTIONS, MOCK_SUMMARY } from "@/lib/import-mock-data";
 import { importQuestions, questionKeys } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { useImportDraftStore } from "@/store/import-draft-store";
 import type {
   ImportFormat,
   ImportStatus,
@@ -42,10 +53,21 @@ import type {
 } from "@/types/import-types";
 import type { ImportQuestionsResult } from "@/types/questions";
 
+const SOURCE_OPTIONS = ["JAMB", "WAEC", "NECO", "GCE"] as const;
+type KnownSource = typeof SOURCE_OPTIONS[number];
+
+function isKnownSource(value: string | null): value is KnownSource {
+  return SOURCE_OPTIONS.includes(value as KnownSource);
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Imports() {
   const queryClient = useQueryClient();
+
+  // ── Draft store ───────────────────────────────────────────────────────────
+  const { saveDraft, hasDraft, clearDraft, ...draft } = useImportDraftStore();
+
   // ── Upload state ──────────────────────────────────────────────────────────
   const [format, setFormat] = React.useState<ImportFormat>("xlsx");
   const [file, setFile] = React.useState<File | null>(null);
@@ -59,6 +81,18 @@ export default function Imports() {
   // ── Data state ────────────────────────────────────────────────────────────
   const [questions, setQuestions] = React.useState<ParsedQuestion[]>([]);
   const [summary, setSummary] = React.useState<ParseSummary | null>(null);
+
+  // ── Source state ──────────────────────────────────────────────────────────
+  /** Hint from the parser — never authoritative */
+  const [detectedSource, setDetectedSource] = React.useState<string | null>(null);
+  /** Admin-selected source — authoritative, required before submission */
+  const [importSource, setImportSource] = React.useState<string | null>(null);
+
+  // ── Draft guard state ─────────────────────────────────────────────────────
+  /** true = admin just clicked Process File and a saved draft exists */
+  const [showUploadGuard, setShowUploadGuard] = React.useState(false);
+  /** true = we already restored (or discarded) a draft for this session */
+  const [draftHandled, setDraftHandled] = React.useState(false);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [yearFilter, setYearFilter] = React.useState("all");
@@ -113,9 +147,11 @@ export default function Imports() {
       setSubmitError(null);
       setImportResult(result);
       setStatus("submitted");
+      clearDraft(); // successful submission clears the draft
       queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
     },
     onError: (error) => {
+      // Draft is intentionally preserved on error
       setSubmitError(
         getApiErrorMessage(error, "Unable to submit questions for import."),
       );
@@ -132,11 +168,19 @@ export default function Imports() {
 
   async function handleProcess() {
     if (!file) return;
+
+    // If there's a saved draft from a previous session (and we haven't already
+    // handled it in this page load), show the guard dialog instead of immediately
+    // processing.
+    if (hasDraft() && !draftHandled) {
+      setShowUploadGuard(true);
+      return;
+    }
+
     setStatus("processing");
     setParseError(null);
     setProgress(10);
 
-    // Simulate a brief delay so the processing state is visible
     const progressInterval = setInterval(() => {
       setProgress((p) => Math.min(p + 15, 85));
     }, 200);
@@ -148,6 +192,9 @@ export default function Imports() {
       await new Promise((r) => setTimeout(r, 300));
       setQuestions(result.questions);
       setSummary(result.summary);
+      // Prefill import source from parser detection (admin may override)
+      setDetectedSource(result.detectedSource);
+      setImportSource(result.detectedSource);
       setStatus("preview");
     } catch (err) {
       clearInterval(progressInterval);
@@ -174,6 +221,9 @@ export default function Imports() {
 
     setQuestions(MOCK_QUESTIONS);
     setSummary(MOCK_SUMMARY);
+    // Mock data is JAMB — set both detected and selected
+    setDetectedSource("JAMB");
+    setImportSource("JAMB");
     setStatus("preview");
   }
 
@@ -186,6 +236,9 @@ export default function Imports() {
     setQuestions([]);
     setSummary(null);
     setImportResult(null);
+    setDetectedSource(null);
+    setImportSource(null);
+    setDraftHandled(false);
     setYearFilter("all");
     setStatusFilter("all");
     setSearch("");
@@ -241,7 +294,17 @@ export default function Imports() {
   }
 
   async function handleSubmit() {
-    const selectedQuestions = activeQuestions.map((q) => ({
+    if (!importSource) return; // guard: source must be selected (UI also blocks this)
+
+    // Apply the import-level source to all questions that don't have an
+    // explicit per-question source override (currently the model has no
+    // explicit-override flag, so we apply to all).
+    const questionsWithSource = activeQuestions.map((q) => ({
+      ...q,
+      source: importSource,
+    }));
+
+    const selectedQuestions = questionsWithSource.map((q) => ({
       _clientId: q._clientId,
       rowIndex: q.rowIndex,
       year: q.year,
@@ -249,7 +312,11 @@ export default function Imports() {
       text: q.text,
       hasImage: q.hasImage,
       options: q.options,
-      answer: q.answer,
+      correctAnswer: q.correctAnswer,
+      source: q.source,
+      type: q.type,
+      difficulty: q.difficulty,
+      explanation: q.explanation,
       status:
         q.status === "duplicate" && q.duplicateResolution === "keep"
           ? ("warning" as const)
@@ -261,7 +328,58 @@ export default function Imports() {
     importMutation.mutate({ questions: selectedQuestions });
   }
 
+  // ── Draft actions ─────────────────────────────────────────────────────────
+
+  function handleSaveDraft() {
+    saveDraft({ importSource, questions, summary });
+  }
+
+  function handleRestoreDraft() {
+    setQuestions(draft.questions);
+    setSummary(draft.summary);
+    setImportSource(draft.importSource);
+    setDetectedSource(null); // no file was processed, so detection is unknown
+    setStatus("preview");
+    setDraftHandled(true);
+  }
+
+  function handleDiscardDraft() {
+    clearDraft();
+    setDraftHandled(true);
+  }
+
+  /** Called from the new-upload guard: discard draft and process the new file */
+  async function handleGuardDiscardAndProcess() {
+    clearDraft();
+    setDraftHandled(true);
+    setShowUploadGuard(false);
+    // Re-run process now that the guard is dismissed
+    setStatus("processing");
+    setParseError(null);
+    setProgress(10);
+    const progressInterval = setInterval(() => {
+      setProgress((p) => Math.min(p + 15, 85));
+    }, 200);
+    try {
+      const result = await parseFile(file!, format);
+      clearInterval(progressInterval);
+      setProgress(100);
+      await new Promise((r) => setTimeout(r, 300));
+      setQuestions(result.questions);
+      setSummary(result.summary);
+      setDetectedSource(result.detectedSource);
+      setImportSource(result.detectedSource);
+      setStatus("preview");
+    } catch (err) {
+      clearInterval(progressInterval);
+      setParseError(err instanceof Error ? err.message : "Failed to parse file");
+      setStatus("error");
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
+
+  const draftExists = hasDraft();
 
   return (
     <>
@@ -270,17 +388,33 @@ export default function Imports() {
         <div>
           <h1 className="text-lg font-semibold">Import Questions</h1>
           <p className="text-sm text-muted-foreground">
-            Bulk-ingest JAMB past questions from XLSX or JSON files.
+            Bulk-ingest past questions from XLSX or JSON files.
           </p>
         </div>
         {status === "preview" && (
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            Start Over
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSaveDraft}>
+              <HugeiconsIcon icon={FloppyDiskIcon} className="h-3.5 w-3.5" />
+              Save Draft
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              Start Over
+            </Button>
+          </div>
         )}
       </div>
 
       <Separator className="my-2" />
+
+      {/* ── Draft banner (idle only, before any action this session) ── */}
+      {(status === "idle" || status === "error") && draftExists && !draftHandled && (
+        <DraftBanner
+          savedAt={draft.savedAt}
+          questionCount={draft.questions.length}
+          onRestore={handleRestoreDraft}
+          onDiscard={handleDiscardDraft}
+        />
+      )}
 
       {/* ── IDLE / UPLOAD ── */}
       {(status === "idle" || status === "error") && (
@@ -318,6 +452,19 @@ export default function Imports() {
 
           <Separator />
 
+          {/* Source selector */}
+          <ImportSourceSelector
+            detectedSource={detectedSource}
+            selectedSource={importSource}
+            onChange={(src) => {
+              setImportSource(src);
+              // Apply source to all questions
+              setQuestions((prev) => prev.map((q) => ({ ...q, source: src })));
+            }}
+          />
+
+          <Separator />
+
           {/* Actions bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <ImportFilters
@@ -349,6 +496,7 @@ export default function Imports() {
             keptDuplicates={keptDuplicates}
             removedCount={removedCount}
             remainingErrors={remainingErrors}
+            importSource={importSource}
             isSubmitting={importMutation.isPending}
             submitError={submitError}
             onSubmit={handleSubmit}
@@ -356,7 +504,46 @@ export default function Imports() {
         </div>
       )}
 
+      {/* ── New-upload guard dialog ── */}
+      <Dialog open={showUploadGuard} onOpenChange={(v) => !v && setShowUploadGuard(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>You have a saved draft</DialogTitle>
+            <DialogDescription>
+              You have a draft with {draft.questions.length} question
+              {draft.questions.length === 1 ? "" : "s"} saved from a previous session.
+              What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowUploadGuard(false);
+                handleRestoreDraft();
+              }}
+            >
+              <HugeiconsIcon icon={Rotate01Icon} className="h-3.5 w-3.5" />
+              Restore Draft
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowUploadGuard(false);
+                handleGuardDiscardAndProcess();
+              }}
+            >
+              Discard & Process New File
+            </Button>
+            <Button variant="ghost" onClick={() => setShowUploadGuard(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Dialogs ── */}
+
       <QuestionReviewDialog
         question={reviewQuestion}
         open={reviewQuestion !== null}
@@ -371,6 +558,7 @@ export default function Imports() {
             : undefined
         }
       />
+
 
       <QuestionEditDialog
         question={editQuestion}
@@ -396,6 +584,97 @@ export default function Imports() {
         }}
       />
     </>
+  );
+}
+
+// ─── Draft banner ─────────────────────────────────────────────────────────────
+
+function DraftBanner({
+  savedAt,
+  questionCount,
+  onRestore,
+  onDiscard,
+}: {
+  savedAt: string | null;
+  questionCount: number;
+  onRestore: () => void;
+  onDiscard: () => void;
+}) {
+  const relativeTime = savedAt
+    ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+        Math.round((new Date(savedAt).getTime() - Date.now()) / 60000),
+        "minutes",
+      )
+    : "recently";
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+          Saved draft available
+        </p>
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          {questionCount} question{questionCount === 1 ? "" : "s"} · saved{" "}
+          {relativeTime}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={onRestore}>
+          Restore Draft
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDiscard}>
+          Discard
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Import source selector ────────────────────────────────────────────────────
+
+function ImportSourceSelector({
+  detectedSource,
+  selectedSource,
+  onChange,
+}: {
+  detectedSource: string | null;
+  selectedSource: string | null;
+  onChange: (source: string | null) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted/20 px-4 py-3">
+      <div className="flex-1 space-y-0.5">
+        <p className="text-sm font-semibold">Import Source</p>
+        <p className="text-xs text-muted-foreground">
+          {detectedSource
+            ? `Detected from file: ${detectedSource}`
+            : "Source could not be determined automatically."}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          id="import-source-selector"
+          value={selectedSource ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          className={`flex h-9 rounded-md border bg-background px-3 py-1 text-sm shadow-sm ${
+            !selectedSource ? "border-destructive text-destructive" : "border-input"
+          }`}
+          aria-label="Import source"
+        >
+          <option value="">Select source…</option>
+          {SOURCE_OPTIONS.map((src) => (
+            <option key={src} value={src}>
+              {src}
+            </option>
+          ))}
+        </select>
+        {!selectedSource && (
+          <p className="text-xs font-medium text-destructive">
+            Required before submitting
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -555,6 +834,7 @@ function SubmissionFooter({
   keptDuplicates,
   removedCount,
   remainingErrors,
+  importSource,
   isSubmitting,
   submitError,
   onSubmit,
@@ -563,11 +843,13 @@ function SubmissionFooter({
   keptDuplicates: number;
   removedCount: number;
   remainingErrors: number;
+  importSource: string | null;
   isSubmitting: boolean;
   submitError: string | null;
   onSubmit: () => void;
 }) {
   const activeCount = summary.totalQuestions;
+  const canSubmit = remainingErrors === 0 && !isSubmitting && !!importSource;
 
   return (
     <div className="space-y-3">
@@ -597,12 +879,17 @@ function SubmissionFooter({
               fixed or removed before submitting
             </p>
           )}
+          {!importSource && (
+            <p className="text-xs font-medium text-destructive">
+              No source selected. Choose JAMB, WAEC, NECO, or GCE before importing.
+            </p>
+          )}
         </div>
 
         <Button
           size="lg"
           onClick={onSubmit}
-          disabled={remainingErrors > 0 || isSubmitting}
+          disabled={!canSubmit}
         >
           {isSubmitting ? (
             <>

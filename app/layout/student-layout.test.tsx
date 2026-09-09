@@ -23,7 +23,7 @@ const user: UserResponse = {
   image: null,
   role: "user",
   preferredName: "Gaby",
-  onboardingCompleted: true,
+  onboardingCompleted: true, onboardingCompletedAt: new Date(),
   programme: null,
   subjects: [],
 };
@@ -31,7 +31,7 @@ const user: UserResponse = {
 const incompleteUser: UserResponse = {
   ...user,
   preferredName: null,
-  onboardingCompleted: false,
+  onboardingCompleted: false, onboardingCompletedAt: null,
 };
 
 function renderStudentLayout(resolvedUser: UserResponse = user) {
