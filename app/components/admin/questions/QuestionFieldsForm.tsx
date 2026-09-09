@@ -21,8 +21,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { QUESTION_SOURCES } from "@/constants/question-sources";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface QuestionOption {
   key: string;
   text: string;
@@ -84,8 +82,6 @@ const DIFFICULTY_OPTIONS = [
   { value: "HARD", label: "Hard" },
 ] as const;
 
-// ─── Validation helpers ────────────────────────────────────────────────────────
-
 export interface QuestionFieldErrors {
   year?: string;
   text?: string;
@@ -101,7 +97,11 @@ export function validateQuestionFormValues(
   if (v.year === null || isNaN(v.year)) errors.year = "Year is required";
   if (!v.text.trim()) errors.text = "Question text is required";
   if (!v.type || v.type === "UNKNOWN") errors.type = "Select a question type";
-  if (v.correctAnswer === null || v.correctAnswer === "" || (Array.isArray(v.correctAnswer) && v.correctAnswer.length === 0)) {
+  if (
+    v.correctAnswer === null ||
+    v.correctAnswer === "" ||
+    (Array.isArray(v.correctAnswer) && v.correctAnswer.length === 0)
+  ) {
     errors.correctAnswer = "Correct answer is required";
   }
   if (v.hasImage && !v.image) errors.image = "Image is required";
@@ -112,8 +112,6 @@ export function isQuestionFormValid(v: QuestionFormValues): boolean {
   return Object.keys(validateQuestionFormValues(v)).length === 0;
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface QuestionFieldsFormProps {
   values: QuestionFormValues;
   onChange: (values: QuestionFormValues) => void;
@@ -122,8 +120,6 @@ interface QuestionFieldsFormProps {
   /** Highlight validation errors inline */
   showErrors?: boolean;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function QuestionFieldsForm({
   values,
@@ -193,8 +189,6 @@ export function QuestionFieldsForm({
   const isChoiceType =
     values.type === "SINGLE_CHOICE" || values.type === "MULTIPLE_CHOICE";
 
-  // ── Read-only render ───────────────────────────────────────────────────────
-
   if (readOnly) {
     return <QuestionFieldsReadOnly values={values} />;
   }
@@ -219,9 +213,7 @@ export function QuestionFieldsForm({
             placeholder="e.g. 2020"
             className={errors.year ? "border-destructive" : ""}
           />
-          {errors.year && (
-            <FieldError message={errors.year} />
-          )}
+          {errors.year && <FieldError message={errors.year} />}
         </div>
 
         <div className="space-y-1.5">
@@ -244,7 +236,9 @@ export function QuestionFieldsForm({
             value={values.type}
             onChange={(e) => handleTypeChange(e.target.value)}
             className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ${
-              errors.type ? "border-destructive text-destructive" : "border-input"
+              errors.type
+                ? "border-destructive text-destructive"
+                : "border-input"
             }`}
           >
             <option value="UNKNOWN">Select type…</option>
@@ -423,7 +417,7 @@ export function QuestionFieldsForm({
             value={
               Array.isArray(values.correctAnswer)
                 ? values.correctAnswer.join(", ")
-                : values.correctAnswer ?? ""
+                : (values.correctAnswer ?? "")
             }
             onChange={(e) => setField("correctAnswer", e.target.value)}
             placeholder={
@@ -436,9 +430,7 @@ export function QuestionFieldsForm({
             className={errors.correctAnswer ? "border-destructive" : ""}
           />
         )}
-        {errors.correctAnswer && (
-          <FieldError message={errors.correctAnswer} />
-        )}
+        {errors.correctAnswer && <FieldError message={errors.correctAnswer} />}
       </div>
 
       {/* Row: Difficulty */}
@@ -473,8 +465,6 @@ export function QuestionFieldsForm({
   );
 }
 
-// ─── Read-only display ────────────────────────────────────────────────────────
-
 function QuestionFieldsReadOnly({ values }: { values: QuestionFormValues }) {
   const isChoiceType =
     values.type === "SINGLE_CHOICE" || values.type === "MULTIPLE_CHOICE";
@@ -482,7 +472,7 @@ function QuestionFieldsReadOnly({ values }: { values: QuestionFormValues }) {
   return (
     <div className="space-y-4">
       {/* Metadata grid */}
-      <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-4 border border-border sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-4 border border-border sm:grid-cols-3">
         <ReadOnlyField label="Year" value={values.year?.toString() ?? null} />
         <ReadOnlyField label="Subject" value={values.subject || null} />
         <ReadOnlyField label="Type" value={values.type || null} />
@@ -501,7 +491,9 @@ function QuestionFieldsReadOnly({ values }: { values: QuestionFormValues }) {
         </p>
         <p className="text-sm leading-relaxed">
           {values.text || (
-            <span className="italic text-muted-foreground">No question text</span>
+            <span className="italic text-muted-foreground">
+              No question text
+            </span>
           )}
         </p>
       </div>

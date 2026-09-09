@@ -22,7 +22,6 @@ interface QuestionRowProps {
   onSelect: (checked: boolean) => void;
   busy: boolean;
   onAction: (action: ActionType) => void;
-  /** Opens the view/edit dialog for this question */
   onView: (question: AdminQuestion) => void;
 }
 

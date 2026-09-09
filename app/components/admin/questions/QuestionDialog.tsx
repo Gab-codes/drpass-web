@@ -28,11 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  createQuestion,
-  updateQuestion,
-  questionKeys,
-} from "@/api/questions";
+import { createQuestion, updateQuestion, questionKeys } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
   QuestionFieldsForm,
@@ -42,12 +38,9 @@ import {
 } from "./QuestionFieldsForm";
 import type { AdminQuestion } from "@/types/questions";
 
-// ─── Type adapter: AdminQuestion ↔ QuestionFormValues ─────────────────────────
-// AdminQuestion from the API uses the flat optionA/B/C/D shape.
-// QuestionFormValues uses the canonical options[] shape.
-// These adapters run only at the dialog boundary.
-
-export function adminQuestionToFormValues(q: AdminQuestion): QuestionFormValues {
+export function adminQuestionToFormValues(
+  q: AdminQuestion,
+): QuestionFormValues {
   return {
     year: q.year,
     subject: q.subject,
@@ -226,9 +219,7 @@ export function QuestionDialog({
       <DialogContent className="max-w-2xl max-h-[93vh] overflow-y-auto scrollbar-none">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description && (
-            <DialogDescription>{description}</DialogDescription>
-          )}
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
         {errorMsg && (
