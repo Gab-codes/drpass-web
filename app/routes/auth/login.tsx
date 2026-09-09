@@ -3,9 +3,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
 
 import { loginSchema, type LoginInput } from "@/validation/auth";
-import { login } from "@/api/auth";
+import { login, getCurrentUser } from "@/api/auth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +33,23 @@ export default function LoginPage() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: login,
-    onSuccess: (response) => {
-      // Invalidate the current user query so it fetches the new session
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      
-      const role = response?.data?.user?.role;
-      navigate(role === "admin" ? "/admin" : "/dashboard");
+    onSuccess: async () => {
+      // Establish the session, then refresh the canonical current-user query
+      // exactly once so the destination decision comes from /auth/me — not
+      // from the (possibly stale) login response or the local Zustand draft.
+      await queryClient.invalidateQueries({ queryKey: USER_QUERY_KEY });
+      const user = await queryClient.fetchQuery({
+        queryKey: USER_QUERY_KEY,
+        queryFn: getCurrentUser,
+      });
+
+      if (user.role === "admin") {
+        navigate("/admin");
+      } else if (user.onboardingCompleted) {
+        navigate("/dashboard");
+      } else {
+        navigate("/onboarding");
+      }
     },
     onError: (error: any) => {
       setErrorMsg(error?.message || "An error occurred during sign in.");

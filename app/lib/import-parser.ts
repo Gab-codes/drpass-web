@@ -280,7 +280,7 @@ export function isInstructionRow(
 ): boolean {
   if (!q.text || q.text.trim() === "") return false;
   const nonEmptyOptions = q.options.filter((o) => o.text.trim() !== "");
-  return !q.answer && nonEmptyOptions.length === 0;
+  return !q.correctAnswer && nonEmptyOptions.length === 0;
 }
 
 export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
@@ -290,7 +290,7 @@ export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">)
   if (!q.text || q.text.trim() === "") {
     return { status: "error", statusReason: "Missing question text" };
   }
-  if (!q.answer) {
+  if (q.correctAnswer === null || q.correctAnswer === undefined || q.correctAnswer === "") {
     return {
       status: "error",
       statusReason: "Missing or invalid correct answer",
@@ -302,16 +302,26 @@ export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">)
   if (!q.subject) {
     return { status: "error", statusReason: "Missing subject" };
   }
-  const nonEmptyOptions = q.options.filter((o) => o.text.trim() !== "");
-  if (nonEmptyOptions.length < 2) {
-    return { status: "error", statusReason: "Fewer than 2 answer options" };
-  }
-  if (nonEmptyOptions.length < 4) {
+  if (q.type === 'UNKNOWN') {
     return {
       status: "warning",
-      statusReason: `Only ${nonEmptyOptions.length} of 4 options provided`,
+      statusReason: "Question type could not be determined. Please resolve.",
     };
   }
+  
+  const nonEmptyOptions = q.options.filter((o) => o.text.trim() !== "");
+  if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE') {
+    if (nonEmptyOptions.length < 2) {
+      return { status: "error", statusReason: "Fewer than 2 answer options" };
+    }
+    if (nonEmptyOptions.length < 4) {
+      return {
+        status: "warning",
+        statusReason: `Only ${nonEmptyOptions.length} of 4 options provided`,
+      };
+    }
+  }
+
   if (q.hasImage) {
     return {
       status: "warning",
@@ -321,6 +331,108 @@ export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">)
   }
   return { status: "valid" };
 }
+
+const KNOWN_SOURCES = ['JAMB', 'WAEC', 'NECO', 'GCE'] as const;
+type KnownSource = typeof KNOWN_SOURCES[number];
+
+/**
+ * Detect a source from a single text string (sheet name or filename stem).
+ * Returns one source only if exactly one source keyword is found; null otherwise.
+ */
+export function detectSourceFromText(text: string): KnownSource | null {
+  const upper = text.toUpperCase();
+  const found = KNOWN_SOURCES.filter((s) => upper.includes(s));
+  // Return source only if unambiguous (exactly one match)
+  return found.length === 1 ? found[0] : null;
+}
+
+/**
+ * Detect source from an entire XLSX workbook using deterministic precedence:
+ *   1. Workbook built-in properties (Title, Subject, Keywords, Description)
+ *   2. All sheet names combined — returns null if multiple sources found
+ *   3. Filename stem
+ *
+ * Returns null if:
+ *   - No recognisable source keyword found
+ *   - More than one different source found in any single tier
+ *
+ * Never defaults to JAMB or any other source.
+ */
+export function detectSourceFromWorkbook(
+  wb: import('xlsx').WorkBook,
+  filename: string,
+): KnownSource | null {
+  // Tier 1: workbook built-in properties (if the spreadsheet author filled them in)
+  const props = wb.Props as any;
+  if (props) {
+    const propsText = [
+      props.Title ?? '',
+      props.Subject ?? '',
+      props.Keywords ?? '',
+      props.Description ?? '',
+    ].join(' ');
+    const fromProps = detectSourceFromText(propsText);
+    if (fromProps !== null) return fromProps;
+  }
+
+  // Tier 2: all sheet names combined
+  const sheetText = (wb.SheetNames ?? []).join(' ');
+  const fromSheets = detectSourceFromText(sheetText);
+  if (fromSheets !== null) return fromSheets;
+
+  // Tier 3: filename stem (strip extension)
+  const stem = filename.replace(/\.[^.]+$/, '');
+  return detectSourceFromText(stem);
+}
+
+/**
+ * @deprecated Use detectSourceFromWorkbook for full workbook inspection.
+ * Kept for the per-sheet path in the existing structured parser.
+ */
+export function detectSource(sheetName: string, filenameHint?: string): KnownSource | null {
+  // Try sheet name first, then fall back to filename
+  const fromSheet = detectSourceFromText(sheetName);
+  if (fromSheet !== null) return fromSheet;
+  if (filenameHint) {
+    const stem = filenameHint.replace(/\.[^.]+$/, '');
+    return detectSourceFromText(stem);
+  }
+  return null;
+}
+
+export function detectQuestionType(options: { key: string; text: string }[], correctAnswer: any): string {
+  const validOptions = options.filter(o => o.text.trim() !== '');
+  
+  if (Array.isArray(correctAnswer) && correctAnswer.length > 1) {
+    return 'MULTIPLE_CHOICE';
+  }
+  
+  if (validOptions.length === 0) {
+    if (typeof correctAnswer === 'number' || !isNaN(Number(correctAnswer))) {
+      return 'NUMERIC';
+    }
+    if (typeof correctAnswer === 'string' && correctAnswer.trim() !== '') {
+      return 'SHORT_ANSWER';
+    }
+  }
+  
+  if (validOptions.length >= 3) {
+    return 'SINGLE_CHOICE';
+  }
+  
+  if (validOptions.length === 2) {
+    const keys = validOptions.map(o => o.key.toUpperCase());
+    const texts = validOptions.map(o => o.text.toUpperCase());
+    if ((keys.includes('T') && keys.includes('F')) || (texts.includes('TRUE') && texts.includes('FALSE'))) {
+      return 'TRUE_FALSE';
+    }
+    // Two options that are not clearly True/False are ambiguous — require admin resolution
+    return 'UNKNOWN';
+  }
+  
+  return 'UNKNOWN';
+}
+
 
 export function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
   const seen = new Map<string, string>();
@@ -358,7 +470,11 @@ export function revalidateQuestions(
       text,
       rawText,
       options,
-      answer,
+      correctAnswer,
+      source,
+      type,
+      difficulty,
+      explanation,
       hasImage,
       image,
       isEdited,
@@ -376,7 +492,11 @@ export function revalidateQuestions(
       text,
       rawText,
       options,
-      answer,
+      correctAnswer,
+      source,
+      type,
+      difficulty,
+      explanation,
       hasImage,
       image,
       isEdited,
@@ -562,9 +682,12 @@ export function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
 
 export async function parseXlsx(
   file: File,
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
+): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
   const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: "array" });
+  const wb = XLSX.read(buffer, { type: "array", bookProps: true });
+
+  // Workbook-level source detection — runs once before iterating sheets
+  const detectedSource = detectSourceFromWorkbook(wb, file.name);
 
   const allQuestions: ParsedQuestion[] = [];
   let rowGlobal = 0;
@@ -634,6 +757,14 @@ export async function parseXlsx(
           conflictReason,
         } = normalizeOptions(rawOptions);
 
+        const optionsArr = [
+          { key: "A", text: normOptions.A },
+          { key: "B", text: normOptions.B },
+          { key: "C", text: normOptions.C },
+          { key: "D", text: normOptions.D },
+        ];
+        const rawAns = String(record.correctAnswer ?? record.answer ?? "");
+        
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
           rowIndex: i + 1,
@@ -642,13 +773,12 @@ export async function parseXlsx(
           subject: rowSubject ?? "",
           text: cleanText,
           rawText,
-          options: [
-            { key: "A", text: normOptions.A },
-            { key: "B", text: normOptions.B },
-            { key: "C", text: normOptions.C },
-            { key: "D", text: normOptions.D },
-          ],
-          answer: toAnswerOption(record.correctAnswer),
+          options: optionsArr,
+          correctAnswer: rawAns,
+          source: detectSource(sheetName, file.name),
+          type: detectQuestionType(optionsArr, rawAns),
+          difficulty: record.difficulty ? String(record.difficulty) : null,
+          explanation: record.explanation ? String(record.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
         };
@@ -713,6 +843,14 @@ export async function parseXlsx(
           conflictReason,
         } = normalizeOptions(rawOptions);
 
+        const optionsArr = [
+          { key: "A", text: normOptions.A },
+          { key: "B", text: normOptions.B },
+          { key: "C", text: normOptions.C },
+          { key: "D", text: normOptions.D },
+        ];
+        const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
           rowIndex: rowGlobal,
@@ -721,13 +859,12 @@ export async function parseXlsx(
           subject: String(row.subject ?? "").trim(),
           text: cleanText,
           rawText,
-          options: [
-            { key: "A", text: normOptions.A },
-            { key: "B", text: normOptions.B },
-            { key: "C", text: normOptions.C },
-            { key: "D", text: normOptions.D },
-          ],
-          answer: toAnswerOption(row.answer ?? row.correctAnswer),
+          options: optionsArr,
+          correctAnswer: rawAns,
+          source: detectSource(sheetName, file.name),
+          type: detectQuestionType(optionsArr, rawAns),
+          difficulty: row.difficulty ? String(row.difficulty) : null,
+          explanation: row.explanation ? String(row.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
         };
@@ -752,14 +889,14 @@ export async function parseXlsx(
 
   const withDuplicates = detectDuplicates(allQuestions);
   const summary = buildSummary(withDuplicates, contextRowCount);
-  return { questions: withDuplicates, summary };
+  return { questions: withDuplicates, summary, detectedSource };
 }
 
 // ── JSON ──────────────────────────────────────────────────────────────────────
 
 export async function parseJson(
   file: File,
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
+): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
   const text = await file.text();
   let data: unknown;
   try {
@@ -768,6 +905,9 @@ export async function parseJson(
     throw new Error("Invalid JSON file. The file could not be parsed.");
   }
 
+  // Source detection for JSON files — filename only
+  const stem = file.name.replace(/\.[^.]+$/, "");
+  const detectedSource = detectSourceFromText(stem);
   const raw: unknown[] = Array.isArray(data)
     ? data
     : Array.isArray((data as { questions?: unknown[] }).questions)
@@ -801,6 +941,14 @@ export async function parseJson(
       conflictReason,
     } = normalizeOptions(rawOptions);
 
+    const optionsArr = [
+      { key: "A", text: normOptions.A },
+      { key: "B", text: normOptions.B },
+      { key: "C", text: normOptions.C },
+      { key: "D", text: normOptions.D },
+    ];
+    const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
       rowIndex: idx + 1,
@@ -809,13 +957,12 @@ export async function parseJson(
       subject: String(row.subject ?? "").trim(),
       text: cleanText,
       rawText,
-      options: [
-        { key: "A", text: normOptions.A },
-        { key: "B", text: normOptions.B },
-        { key: "C", text: normOptions.C },
-        { key: "D", text: normOptions.D },
-      ],
-      answer: toAnswerOption(row.answer ?? row.correctAnswer),
+      options: optionsArr,
+      correctAnswer: rawAns,
+      source: detectSource("JSON", file.name),
+      type: detectQuestionType(optionsArr, rawAns),
+      difficulty: row.difficulty ? String(row.difficulty) : null,
+      explanation: row.explanation ? String(row.explanation) : null,
       hasImage: detectPossibleImage(cleanText),
       image: null,
     };
@@ -837,7 +984,7 @@ export async function parseJson(
 
   const withDuplicates = detectDuplicates(questions);
   const summary = buildSummary(withDuplicates, contextRowCount);
-  return { questions: withDuplicates, summary };
+  return { questions: withDuplicates, summary, detectedSource };
 }
 
 // ── Shared ─────────────────────────────────────────────────────────────────
@@ -865,7 +1012,7 @@ export function buildSummary(
 export async function parseFile(
   file: File,
   format: "xlsx" | "json",
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary }> {
+): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
   if (format === "xlsx") return parseXlsx(file);
   return parseJson(file);
 }

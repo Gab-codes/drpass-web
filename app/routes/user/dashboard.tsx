@@ -44,7 +44,7 @@ export default function StudentDashboardPage() {
     >
       <div className="flex flex-col gap-4 md:gap-6">
         <motion.div variants={itemVariants}>
-          <DashboardHeader profile={profile} state={state} />
+          <DashboardHeader />
         </motion.div>
 
         <motion.div variants={itemVariants}>
@@ -64,12 +64,15 @@ export default function StudentDashboardPage() {
         <motion.div variants={itemVariants} className="order-1 md:order-1">
           <FocusRecommendation focusArea={focusArea} state={state} />
         </motion.div>
-        
+
         <motion.div variants={itemVariants} className="order-2 md:order-2">
           <SubjectPerformance subjectStats={subjectStats} state={state} />
         </motion.div>
-        
-        <motion.div variants={itemVariants} className="order-3 md:order-3 md:col-start-1">
+
+        <motion.div
+          variants={itemVariants}
+          className="order-3 md:order-3 md:col-start-1"
+        >
           <StudyStreak
             streakDays={streakDays}
             recentActivity={recentActivity}

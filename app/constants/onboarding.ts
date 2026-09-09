@@ -26,3 +26,38 @@ export const UTME_SUBJECTS: Subject[] = [
 ];
 
 export const COMPULSORY_SUBJECT = "english";
+
+/**
+ * Stable mapping from the frontend subject slugs (used by the onboarding UI
+ * and the Zustand draft) to the backend's canonical subject codes. The
+ * canonical subject UUIDs are resolved at runtime from GET /subjects by
+ * matching `code` — never hardcoded.
+ */
+export const SUBJECT_CODE_BY_SLUG: Record<string, string> = {
+  english: "ENG",
+  math: "MTH",
+  physics: "PHY",
+  chemistry: "CHM",
+  biology: "BIO",
+  agric: "AGR",
+  econ: "ECO",
+  geography: "GEO",
+  government: "GOV",
+  "lit-eng": "LIT",
+  crk: "CRS",
+  irk: "IRS",
+  history: "HIS",
+  commerce: "COM",
+  accounting: "ACC",
+  french: "FRE",
+  igbo: "IGB",
+  hausa: "HAU",
+  yoruba: "YOR",
+  music: "MUS",
+  "fine-arts": "ART",
+  computer: "CMP",
+};
+
+export const SUBJECT_SLUG_BY_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(SUBJECT_CODE_BY_SLUG).map(([slug, code]) => [code, slug]),
+);

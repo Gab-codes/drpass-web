@@ -86,10 +86,11 @@ export function QuestionEditDialog({
   }
 
   const hasText = draft.text.trim() !== "";
-  const hasAnswer = draft.answer !== null;
+  const hasAnswer = draft.correctAnswer !== null && draft.correctAnswer !== "";
   const hasYear = draft.year !== null;
+  const hasValidType = draft.type !== "UNKNOWN";
   const hasValidImage = !draft.hasImage || draft.image !== null;
-  const canSave = hasText && hasAnswer && hasYear && hasValidImage;
+  const canSave = hasText && hasAnswer && hasYear && hasValidImage && hasValidType;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -130,6 +131,42 @@ export function QuestionEditDialog({
                 value={draft.subject}
                 onChange={(e) => setField("subject", e.target.value)}
                 placeholder="e.g. Accountancy"
+              />
+            </div>
+          </div>
+
+          {/* Type and Source */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-type">Question Type</Label>
+              <select
+                id="edit-type"
+                value={draft.type}
+                onChange={(e) => setField("type", e.target.value)}
+                className={`flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ${!hasValidType ? 'border-destructive text-destructive' : 'border-input'}`}
+              >
+                <option value="UNKNOWN">Select Type...</option>
+                <option value="SINGLE_CHOICE">Single Choice</option>
+                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+                <option value="TRUE_FALSE">True/False</option>
+                <option value="SHORT_ANSWER">Short Answer</option>
+                <option value="NUMERIC">Numeric</option>
+              </select>
+              {!hasValidType && (
+                <p className="flex items-center gap-1 text-xs text-destructive">
+                  <HugeiconsIcon icon={AlertCircleIcon} className="h-3 w-3" />
+                  Must resolve UNKNOWN type
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-source">Source</Label>
+              <Input
+                id="edit-source"
+                value={draft.source ?? ""}
+                onChange={(e) => setField("source", e.target.value)}
+                placeholder="e.g. JAMB"
               />
             </div>
           </div>
@@ -260,30 +297,83 @@ export function QuestionEditDialog({
             <Label htmlFor="edit-answer">
               Correct Answer <span className="text-destructive">*</span>
             </Label>
-            <div className="flex gap-2">
-              {ANSWER_OPTIONS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setField("answer", key)}
-                  aria-pressed={draft.answer === key}
-                  aria-label={`Set correct answer to ${key}`}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
-                    draft.answer === key
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border bg-background hover:bg-muted"
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
+            {draft.type === "SINGLE_CHOICE" || draft.type === "MULTIPLE_CHOICE" ? (
+              <div className="flex gap-2">
+                {ANSWER_OPTIONS.map((key) => {
+                  const isSelected = Array.isArray(draft.correctAnswer) ? draft.correctAnswer.includes(key) : draft.correctAnswer === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        if (draft.type === "MULTIPLE_CHOICE") {
+                          const current = Array.isArray(draft.correctAnswer) ? [...draft.correctAnswer] : draft.correctAnswer ? [draft.correctAnswer] : [];
+                          if (current.includes(key)) {
+                            setField("correctAnswer", current.filter(c => c !== key));
+                          } else {
+                            setField("correctAnswer", [...current, key]);
+                          }
+                        } else {
+                          setField("correctAnswer", key);
+                        }
+                      }}
+                      aria-pressed={isSelected}
+                      aria-label={`Set correct answer to ${key}`}
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <Input
+                id="edit-answer"
+                value={draft.correctAnswer ?? ""}
+                onChange={(e) => setField("correctAnswer", e.target.value)}
+                placeholder={draft.type === 'TRUE_FALSE' ? 'e.g. TRUE' : 'e.g. 42'}
+                className={!hasAnswer ? "border-destructive" : ""}
+              />
+            )}
             {!hasAnswer && (
               <p className="flex items-center gap-1 text-xs text-destructive">
                 <HugeiconsIcon icon={AlertCircleIcon} className="h-3 w-3" />
                 Correct answer is required
               </p>
             )}
+          </div>
+          {/* Difficulty and Explanation */}
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-difficulty">Difficulty</Label>
+                <select
+                  id="edit-difficulty"
+                  value={draft.difficulty ?? ""}
+                  onChange={(e) => setField("difficulty", e.target.value || null)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                >
+                  <option value="">None</option>
+                  <option value="EASY">Easy</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HARD">Hard</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-explanation">Explanation</Label>
+              <Textarea
+                id="edit-explanation"
+                value={draft.explanation ?? ""}
+                onChange={(e) => setField("explanation", e.target.value || null)}
+                placeholder="Optional explanation..."
+                rows={2}
+              />
+            </div>
           </div>
         </div>
 

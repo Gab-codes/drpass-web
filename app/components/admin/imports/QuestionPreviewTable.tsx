@@ -171,7 +171,7 @@ function QuestionRow({
         </div>
       </td>
       <td className="px-3 py-2 text-xs font-mono font-medium">
-        {q.answer ?? <span className="italic text-muted-foreground">—</span>}
+        {q.correctAnswer ?? <span className="italic text-muted-foreground">—</span>}
       </td>
       <td className="px-3 py-2">
         <span className={statusBadgeClass(q.status)}>

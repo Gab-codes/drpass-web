@@ -8,7 +8,7 @@ export type AnswerOption = "A" | "B" | "C" | "D";
 export type QuestionStatus = "valid" | "warning" | "error" | "duplicate";
 
 export interface ParsedOption {
-  key: AnswerOption;
+  key: string;
   text: string;
 }
 
@@ -23,7 +23,12 @@ export interface ParsedQuestion {
   /** Original unparsed text, for traceability */
   rawText?: string;
   options: ParsedOption[];
-  answer: AnswerOption | null;
+  /** SINGLE_CHOICE/TRUE_FALSE/NUMERIC/SHORT_ANSWER → string; MULTIPLE_CHOICE → string[] */
+  correctAnswer: string | string[] | null;
+  source: string | null;
+  type: string;
+  difficulty: string | null;
+  explanation: string | null;
   status: QuestionStatus;
   /** Human-readable reason for warning/error/duplicate status. */
   statusReason?: string;
@@ -65,7 +70,10 @@ export interface ImportState {
   errorMessage?: string;
   summary: ParseSummary | null;
   questions: ParsedQuestion[];
+  /** Import-level source selected by the admin (overrides parser detection) */
+  importSource: string | null;
 }
+
 
 // ─── Import record (for the show/details page) ────────────────────────────────
 export type ImportRecordStatus =

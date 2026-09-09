@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,15 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { useOnboardingStore } from "@/store/onboarding-store";
 import { UTME_SUBJECTS, COMPULSORY_SUBJECT } from "@/constants/onboarding";
+import {
+  buildSubmitOnboardingRequest,
+  getSubjects,
+  onboardingKeys,
+  submitOnboardingApi,
+} from "@/api/onboarding";
+import { USER_QUERY_KEY } from "@/hooks/use-user";
+import type { UserResponse } from "@/types/auth";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { LockKeyIcon } from "@hugeicons/core-free-icons";
 
@@ -21,8 +32,14 @@ interface StepSubjectsProps {
 
 export function StepSubjects({ onBack }: StepSubjectsProps) {
   const navigate = useNavigate();
-  const { intendedProgramme, subjects, setSubjects, completeOnboarding } =
-    useOnboardingStore();
+  const queryClient = useQueryClient();
+  const {
+    preferredName,
+    intendedProgramme,
+    subjects,
+    setSubjects,
+    completeOnboarding,
+  } = useOnboardingStore();
 
   // Manual path (no programme, only the compulsory subject pre-selected)
   // opens straight into editing.
@@ -30,6 +47,63 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
     subjects.length <= 1 && !intendedProgramme,
   );
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Canonical subject catalogue, used to resolve the local draft's subject
+  // slugs to backend subject IDs at submission time.
+  const { data: apiSubjects = [] } = useQuery({
+    queryKey: onboardingKeys.subjects(),
+    queryFn: getSubjects,
+  });
+
+  // Single final submission. On failure the draft stays intact so the student
+  // can simply retry; only a successful PATCH response marks onboarding complete.
+  const submitMutation = useMutation({
+    mutationFn: submitOnboardingApi,
+    onSuccess: (response) => {
+      // The backend must confirm completion; otherwise treat it as a
+      // failure and keep the draft so the student can retry.
+      if (!response.onboardingCompleted) {
+        setErrorMsg(
+          "We couldn't save your onboarding. Please try again.",
+        );
+        return;
+      }
+
+      // Only after the PATCH succeeded: clear the persisted draft...
+      completeOnboarding();
+
+      // ...and update the canonical current-user cache from the PATCH
+      // response (backend-authoritative). The cache must reflect
+      // onboardingCompleted: true BEFORE navigating, so the student-route
+      // guard cannot bounce back to /onboarding on stale data.
+      queryClient.setQueryData<UserResponse>(USER_QUERY_KEY, (old) =>
+        old
+          ? {
+              ...old,
+              preferredName: response.preferredName,
+              programme: response.programme,
+              subjects: response.subjects,
+              onboardingCompleted: true,
+            }
+          : old,
+      );
+
+      navigate("/dashboard");
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        // Session expired — re-authenticate instead of showing a retry loop.
+        navigate("/login", { replace: true });
+        return;
+      }
+      setErrorMsg(
+        getApiErrorMessage(
+          error,
+          "We couldn't save your onboarding. Please try again.",
+        ),
+      );
+    },
+  });
 
   const subjectById = new Map(
     UTME_SUBJECTS.map((subject) => [subject.id, subject]),
@@ -81,8 +155,32 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
       return;
     }
 
-    completeOnboarding();
-    navigate("/dashboard");
+    if (!preferredName) {
+      setErrorMsg(
+        "We couldn't save your onboarding. Please try again.",
+      );
+      return;
+    }
+
+    // Map the local draft to the canonical API payload. Slugs that cannot be
+    // resolved to a backend subject block the submission — nothing is dropped.
+    const request = buildSubmitOnboardingRequest({
+      preferredName,
+      programme: intendedProgramme,
+      subjectSlugs: subjects,
+      apiSubjects,
+    });
+
+    if (request.unresolved.length > 0 || request.subjectIds.length !== 4) {
+      setErrorMsg(
+        "Some of your subjects aren't available right now. Please edit your subjects and try again.",
+      );
+      return;
+    }
+
+    setErrorMsg("");
+    const { unresolved: _unresolved, ...payload } = request;
+    submitMutation.mutate(payload);
   };
 
   return (
@@ -161,10 +259,10 @@ export function StepSubjects({ onBack }: StepSubjectsProps) {
                   type="button"
                   size="lg"
                   className="h-12 flex-1"
-                  disabled={subjects.length !== 4}
+                  disabled={subjects.length !== 4 || submitMutation.isPending}
                   onClick={handleComplete}
                 >
-                  Looks right
+                  {submitMutation.isPending ? "Saving..." : "Looks right"}
                 </Button>
               </div>
             </motion.div>

@@ -1,6 +1,6 @@
 import { Outlet, useNavigate } from "react-router";
 import { useEffect } from "react";
-import { useCurrentUser } from "@/hooks/use-auth";
+import { useUser } from "@/hooks/use-user";
 import { AppSidebar } from "@/components/admin/app-sidebar";
 import {
   Breadcrumb,
@@ -29,7 +29,7 @@ import {
 import { Toaster } from "sonner";
 
 export default function AdminLayout() {
-  const { data: user, isLoading, isError } = useCurrentUser();
+  const { user, isLoading, isError } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {

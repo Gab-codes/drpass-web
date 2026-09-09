@@ -3,28 +3,27 @@ import { persist } from "zustand/middleware";
 import type { Programme } from "@/types/onboarding";
 import { COMPULSORY_SUBJECT } from "@/constants/onboarding";
 
-interface OnboardingState {
+interface OnboardingDraftState {
   preferredName: string | null;
   intendedProgramme: Programme | null;
-  subjects: string[]; // array of subject IDs
-  onboardingCompleted: boolean;
+  subjects: string[]; // array of subject slugs
 
   setPreferredName: (name: string) => void;
   setIntendedProgramme: (programme: Programme | null) => void;
   setSubjects: (subjects: string[]) => void;
   addSubject: (subjectId: string) => void;
   removeSubject: (subjectId: string) => void;
+  /** Clears the draft. Called only after the PATCH succeeds — the backend, not this store, owns completion. */
   completeOnboarding: () => void;
   resetOnboarding: () => void;
 }
 
-export const useOnboardingStore = create<OnboardingState>()(
+export const useOnboardingStore = create<OnboardingDraftState>()(
   persist(
     (set) => ({
       preferredName: null,
       intendedProgramme: null,
       subjects: [COMPULSORY_SUBJECT],
-      onboardingCompleted: false,
 
       setPreferredName: (name) => set({ preferredName: name }),
       
@@ -50,17 +49,29 @@ export const useOnboardingStore = create<OnboardingState>()(
         return { subjects: state.subjects.filter(s => s !== subjectId) };
       }),
       
-      completeOnboarding: () => set({ onboardingCompleted: true }),
-      
+      completeOnboarding: () =>
+        set({
+          // The backend is the source of truth for onboarding completion;
+          // clearing the draft here only discards the temporary local input.
+          preferredName: null,
+          intendedProgramme: null,
+          subjects: [COMPULSORY_SUBJECT],
+        }),
+
       resetOnboarding: () => set({
         preferredName: null,
         intendedProgramme: null,
         subjects: [COMPULSORY_SUBJECT],
-        onboardingCompleted: false,
       }),
     }),
     {
       name: "drpass-onboarding-storage",
+      // Only the incomplete draft is persisted; no account-state flags.
+      partialize: (state) => ({
+        preferredName: state.preferredName,
+        intendedProgramme: state.intendedProgramme,
+        subjects: state.subjects,
+      }),
     }
   )
 );

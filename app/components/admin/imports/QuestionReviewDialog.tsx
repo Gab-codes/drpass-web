@@ -108,6 +108,25 @@ export function QuestionReviewDialog({
                 )}
               </div>
             )}
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-4 border border-border">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</p>
+                <p className="text-sm font-medium">{question.type || <span className="italic text-muted-foreground">Unknown</span>}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
+                <p className="text-sm font-medium">{question.source || <span className="italic text-muted-foreground">None</span>}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Difficulty</p>
+                <p className="text-sm font-medium">{question.difficulty || <span className="italic text-muted-foreground">None</span>}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Explanation</p>
+                <p className="text-sm font-medium">{question.explanation ? "Provided" : <span className="italic text-muted-foreground">None</span>}</p>
+              </div>
+            </div>
 
             {/* Question text */}
             <div>
@@ -238,33 +257,45 @@ export function QuestionReviewDialog({
                 Options
               </p>
               <div className="space-y-1.5">
-                {question.options.map((opt) => (
-                  <div key={opt.key} className="flex items-start gap-2.5">
-                    <span
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold ${
-                        question.answer === opt.key
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {opt.key}
-                    </span>
-                    <span
-                      className={`text-sm ${
-                        question.answer === opt.key
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {opt.text || <span className="italic">—</span>}
-                      {question.answer === opt.key && (
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">
-                          (correct)
+                {question.type === "SINGLE_CHOICE" || question.type === "MULTIPLE_CHOICE" ? (
+                  question.options.map((opt) => {
+                    const isCorrect = Array.isArray(question.correctAnswer)
+                      ? question.correctAnswer.includes(opt.key)
+                      : question.correctAnswer === opt.key;
+                    return (
+                      <div key={opt.key} className="flex items-start gap-2.5">
+                        <span
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold ${
+                            isCorrect
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {opt.key}
                         </span>
-                      )}
-                    </span>
+                        <span
+                          className={`text-sm ${
+                            isCorrect
+                              ? "font-medium text-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {opt.text || <span className="italic">—</span>}
+                          {isCorrect && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              (correct)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm">
+                    <span className="font-semibold text-primary">Correct Answer:</span>{" "}
+                    {Array.isArray(question.correctAnswer) ? question.correctAnswer.join(", ") : question.correctAnswer}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
