@@ -29,12 +29,7 @@ export default [
     route("admin", "routes/admin/dashboard.tsx"),
     route("admin/subjects", "routes/admin/subjects.tsx"),
     route("admin/questions", "routes/admin/questions/index.tsx"),
-    route("admin/questions/new", "routes/admin/questions/new.tsx"),
     route("admin/questions/:subject", "routes/admin/questions/subject.tsx"),
-    route(
-      "admin/questions/:questionId/edit",
-      "routes/admin/questions/edit.tsx",
-    ),
     route("admin/question-sets", "routes/admin/question-sets.tsx"),
     route("admin/imports", "routes/admin/imports/index.tsx"),
     route("admin/imports/:importId", "routes/admin/imports/show.tsx"),

@@ -1,13 +1,10 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Add01Icon,
   CheckmarkCircle01Icon,
   PauseIcon,
   PlayIcon,
   ViewIcon,
-  Edit01Icon,
   AlertCircleIcon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons";
@@ -25,6 +22,8 @@ interface QuestionRowProps {
   onSelect: (checked: boolean) => void;
   busy: boolean;
   onAction: (action: ActionType) => void;
+  /** Opens the view/edit dialog for this question */
+  onView: (question: AdminQuestion) => void;
 }
 
 export function QuestionRow({
@@ -33,8 +32,10 @@ export function QuestionRow({
   onSelect,
   busy,
   onAction,
+  onView,
 }: QuestionRowProps) {
-  const icon = question.status === "pending" ? ViewIcon : Edit01Icon;
+  // Suppress unused-variable warning — useMemo is used for potential memoisation
+  const subjectLabel = useMemo(() => question.subject, [question.subject]);
 
   return (
     <tr className={`hover:bg-muted/30 ${selected ? "bg-muted/20" : ""}`}>
@@ -48,7 +49,7 @@ export function QuestionRow({
       <td className="max-w-136 px-3 py-2">
         <div className="space-y-0.5">
           <p className="font-medium leading-snug">{truncate(question.text)}</p>
-          <p className="text-xs text-muted-foreground">{question.subject}</p>
+          <p className="text-xs text-muted-foreground">{subjectLabel}</p>
         </div>
       </td>
       <td className="px-3 py-2 text-xs font-medium tabular-nums">
@@ -72,11 +73,11 @@ export function QuestionRow({
           <Button
             variant="ghost"
             size="icon-xs"
-            render={<Link to={`/admin/questions/${question.id}/edit`} />}
-            aria-label="View and edit question"
-            title="View and edit"
+            onClick={() => onView(question)}
+            aria-label="View question"
+            title="View / Edit"
           >
-            <HugeiconsIcon icon={icon} />
+            <HugeiconsIcon icon={ViewIcon} />
           </Button>
           {question.status !== "approved" && (
             <Button

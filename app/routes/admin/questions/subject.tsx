@@ -33,12 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { QuestionFormDialog } from "@/components/admin/questions/QuestionFormDialog";
+import { QuestionDialog, type QuestionDialogMode } from "@/components/admin/questions/QuestionDialog";
 import { QuestionRow } from "@/components/admin/questions/QuestionRow";
 import { BulkActionBar } from "@/components/admin/questions/BulkActionBar";
 import { QuestionFilters } from "@/components/admin/questions/QuestionFilters";
 import { toast } from "sonner";
-import type { AdminQuestionStatus } from "@/types/questions";
+import type { AdminQuestionStatus, AdminQuestion } from "@/types/questions";
 
 export default function SubjectQuestions() {
   const { subject } = useParams<{ subject: string }>();
@@ -56,8 +56,11 @@ export default function SubjectQuestions() {
   const [pendingActionId, setPendingActionId] = React.useState<string | null>(
     null,
   );
-  const [createOpen, setCreateOpen] = React.useState(false);
   const [approveAllOpen, setApproveAllOpen] = React.useState(false);
+  
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogMode, setDialogMode] = React.useState<QuestionDialogMode>("create");
+  const [dialogQuestion, setDialogQuestion] = React.useState<AdminQuestion | undefined>();
 
   const filters = React.useMemo(
     () => ({
@@ -241,6 +244,18 @@ export default function SubjectQuestions() {
       finally: () => setApproveAllOpen(false),
     });
   };
+  
+  function handleCreateClick() {
+    setDialogMode("create");
+    setDialogQuestion(undefined);
+    setDialogOpen(true);
+  }
+
+  function handleViewClick(question: AdminQuestion) {
+    setDialogMode("view");
+    setDialogQuestion(question);
+    setDialogOpen(true);
+  }
 
   const isBulkBusy = bulkMutation.isPending;
 
@@ -305,17 +320,19 @@ export default function SubjectQuestions() {
               </DialogContent>
             </Dialog>
           )}
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" onClick={handleCreateClick}>
             <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />
             New Question
           </Button>
         </div>
       </div>
 
-      <QuestionFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
+      <QuestionDialog
+        mode={dialogMode}
+        question={dialogQuestion}
         defaultSubject={subject}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
       />
 
       <Separator className="my-2" />
@@ -443,6 +460,7 @@ export default function SubjectQuestions() {
                   onSelect={(c) => handleSelect(question.id, c as boolean)}
                   busy={pendingActionId === question.id}
                   onAction={(action) => handleAction(question.id, action)}
+                  onView={handleViewClick}
                 />
               ))
             )}
