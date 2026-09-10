@@ -270,7 +270,7 @@ export function QuestionFieldsForm({
       </div>
 
       {/* Question text */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 min-w-0">
         <Label htmlFor="qf-text">
           Question Text <span className="text-destructive">*</span>
         </Label>
@@ -280,7 +280,7 @@ export function QuestionFieldsForm({
           onChange={(e) => setField("text", e.target.value)}
           placeholder="Enter the full question text…"
           rows={3}
-          className={errors.text ? "border-destructive" : ""}
+          className={`${errors.text ? "border-destructive" : ""} `}
         />
         {errors.text && <FieldError message={errors.text} />}
       </div>
@@ -451,7 +451,7 @@ export function QuestionFieldsForm({
       </div>
 
       {/* Explanation */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 min-w-0">
         <Label htmlFor="qf-explanation">Explanation</Label>
         <Textarea
           id="qf-explanation"
