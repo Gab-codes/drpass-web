@@ -59,7 +59,12 @@ import type {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const ACTIVE_STATUSES = new Set(["queued", "processing"]);
-const TERMINAL_STATUSES = new Set(["completed", "partial", "failed", "cancelled"]);
+const TERMINAL_STATUSES = new Set([
+  "completed",
+  "partial",
+  "failed",
+  "cancelled",
+]);
 
 function pct(n: number, total: number) {
   if (total === 0) return 0;
@@ -76,7 +81,8 @@ function estimateAboveThreshold(
   confidence: AiClassificationJobResults["confidence"],
   threshold: number, // 0..1
 ): number {
-  if (threshold < 0.8) return confidence.high + confidence.medium + confidence.low;
+  if (threshold < 0.8)
+    return confidence.high + confidence.medium + confidence.low;
   if (threshold < 0.9) return confidence.high + confidence.medium;
   return confidence.high;
 }
@@ -137,10 +143,24 @@ function ClassificationProgress({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-4 gap-3 text-center">
           <div className="rounded-lg bg-muted/40 p-3">
-            <p className="text-xs text-muted-foreground">Processed</p>
-            <p className="text-xl font-semibold mt-1">{job.processed}</p>
+            <p className="text-xs text-muted-foreground">Succeeded</p>
+            <p className="text-xl font-semibold mt-1">{job.succeeded}</p>
+          </div>
+          <div className="rounded-lg bg-muted/40 p-3">
+            <p className="text-xs text-muted-foreground">Failed</p>
+            <p
+              className={`text-xl font-semibold mt-1 ${
+                job.failed > 0 ? "text-destructive" : ""
+              }`}
+            >
+              {job.failed}
+            </p>
+          </div>
+          <div className="rounded-lg bg-muted/40 p-3">
+            <p className="text-xs text-muted-foreground">Skipped</p>
+            <p className="text-xl font-semibold mt-1">{job.skipped}</p>
           </div>
           <div className="rounded-lg bg-muted/40 p-3">
             <p className="text-xs text-muted-foreground">Remaining</p>
@@ -148,11 +168,16 @@ function ClassificationProgress({
               {Math.max(0, job.total - job.processed)}
             </p>
           </div>
-          <div className="rounded-lg bg-muted/40 p-3">
-            <p className="text-xs text-muted-foreground">Skipped</p>
-            <p className="text-xl font-semibold mt-1">{job.skipped}</p>
-          </div>
         </div>
+
+        {job.failed > 0 && (
+          <Alert className="border-warning/40 bg-warning-muted text-warning text-xs">
+            <HugeiconsIcon icon={Alert02Icon} className="h-3.5 w-3.5" />
+            {job.failed} question{job.failed !== 1 ? "s have" : " has"} failed
+            so far. The job is still processing — failed questions can be
+            retried or reviewed once it finishes.
+          </Alert>
+        )}
 
         <p className="text-xs text-muted-foreground">
           This page will update automatically. You can leave and come back.
@@ -181,24 +206,36 @@ function ClassificationResults({
   job,
   results,
   onAccepted,
+  onRetryFailed,
+  isRetryingFailed,
 }: {
   job: AiClassificationJob;
   results: AiClassificationJobResults;
   onAccepted: () => void;
+  onRetryFailed: () => void;
+  isRetryingFailed: boolean;
 }) {
   // Threshold: 0–100 integer for display, converted to 0..1 for API
   const [threshold, setThreshold] = React.useState(80);
   const [showExceptions, setShowExceptions] = React.useState(false);
 
   const thresholdFraction = threshold / 100;
-  const previewCount = estimateAboveThreshold(results.confidence, thresholdFraction);
+  const previewCount = estimateAboveThreshold(
+    results.confidence,
+    thresholdFraction,
+  );
 
-  const totalExceptions = results.failed + results.needsReview;
+  // Failed questions (no AI suggestion), needs-review suggestions, and
+  // low-confidence suggestions all require admin attention.
+  const totalExceptions =
+    results.failed + results.needsReview + results.confidence.low;
 
   const acceptAll = useMutation({
     mutationFn: () => acceptAllClassifications(job.id),
     onSuccess: (data) => {
-      toast.success(`${data.accepted} classification${data.accepted !== 1 ? "s" : ""} accepted`);
+      toast.success(
+        `${data.accepted} classification${data.accepted !== 1 ? "s" : ""} accepted`,
+      );
       onAccepted();
     },
     onError: (err) => {
@@ -209,7 +246,9 @@ function ClassificationResults({
   const acceptThreshold = useMutation({
     mutationFn: () => acceptThresholdClassifications(job.id, thresholdFraction),
     onSuccess: (data) => {
-      toast.success(`${data.accepted} classification${data.accepted !== 1 ? "s" : ""} accepted`);
+      toast.success(
+        `${data.accepted} classification${data.accepted !== 1 ? "s" : ""} accepted`,
+      );
       onAccepted();
     },
     onError: (err) => {
@@ -220,7 +259,9 @@ function ClassificationResults({
   const isBusy = acceptAll.isPending || acceptThreshold.isPending;
   const totalSuggested = results.suggested + results.accepted;
   const totalConfidenceCounts =
-    results.confidence.high + results.confidence.medium + results.confidence.low;
+    results.confidence.high +
+    results.confidence.medium +
+    results.confidence.low;
 
   return (
     <div className="space-y-5">
@@ -230,7 +271,7 @@ function ClassificationResults({
           <h2 className="text-sm font-semibold">Classification Summary</h2>
           <JobStatusBadge status={job.status} />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <SummaryCell label="In Scope" value={results.total} />
           <SummaryCell
             label="AI Suggestions"
@@ -245,18 +286,43 @@ function ClassificationResults({
             highlight="success"
           />
           <SummaryCell
-            label="Exceptions"
-            value={totalExceptions}
-            note={totalExceptions > 0 ? "need attention" : undefined}
-            highlight={totalExceptions > 0 ? "warning" : undefined}
+            label="Needs Review"
+            value={results.needsReview}
+            note="low confidence"
+            highlight="warning"
           />
+          <SummaryCell
+            label="Failed"
+            value={results.failed}
+            note={results.failed > 0 ? "no AI suggestion" : undefined}
+            highlight={results.failed > 0 ? "destructive" : undefined}
+          />
+          <SummaryCell label="Skipped" value={results.skipped} />
         </div>
 
         {job.status === "partial" && (
           <Alert className="border-warning/40 bg-warning-muted text-warning text-xs">
             <HugeiconsIcon icon={Alert02Icon} className="h-3.5 w-3.5" />
-            This job completed with some failures. Suggestions above are still
-            valid and can be accepted. Use "Retry Failed" to reprocess failures.
+            <div className="space-y-2">
+              <p>
+                This job finished, but {results.failed} question
+                {results.failed !== 1 ? "s" : ""} could not be classified.
+                Suggestions above are still valid and can be accepted; failed
+                questions are listed under exceptions.
+              </p>
+              <div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRetryFailed}
+                  disabled={isRetryingFailed}
+                  className="gap-2"
+                >
+                  <HugeiconsIcon icon={Refresh} className="h-3.5 w-3.5" />
+                  {isRetryingFailed ? "Retrying…" : "Retry Failed Questions"}
+                </Button>
+              </div>
+            </div>
           </Alert>
         )}
       </div>
@@ -371,9 +437,25 @@ function ClassificationResults({
             <div>
               <h2 className="text-sm font-semibold">Review Exceptions</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {totalExceptions} question{totalExceptions !== 1 ? "s" : ""}{" "}
-                could not be classified automatically and may need manual
-                correction.
+                {results.failed > 0 && (
+                  <>
+                    {results.failed} question
+                    {results.failed !== 1 ? "s" : ""} failed (no AI suggestion)
+                    {" · "}
+                  </>
+                )}
+                {results.needsReview > 0 &&
+                  `${results.needsReview} question${
+                    results.needsReview !== 1 ? "s" : ""
+                  } need manual review`}
+                {results.needsReview > 0 && results.confidence.low > 0
+                  ? " · "
+                  : ""}
+                {results.confidence.low > 0 &&
+                  `${results.confidence.low} low-confidence suggestion${
+                    results.confidence.low !== 1 ? "s" : ""
+                  }`}
+                .
               </p>
             </div>
             <Button
@@ -385,9 +467,7 @@ function ClassificationResults({
             </Button>
           </div>
 
-          {showExceptions && (
-            <ExceptionPanel jobId={job.id} />
-          )}
+          {showExceptions && <ExceptionPanel jobId={job.id} />}
         </div>
       )}
     </div>
@@ -405,26 +485,77 @@ function ClassificationFailed({
   onRetry: () => void;
   isRetrying: boolean;
 }) {
+  const isCancelled = job.status === "cancelled";
+
   return (
-    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 space-y-4">
-      <div className="flex items-start gap-3">
-        <HugeiconsIcon
-          icon={AlertCircleIcon}
-          className="h-5 w-5 text-destructive mt-0.5 shrink-0"
-        />
-        <div>
-          <p className="text-sm font-medium text-destructive">
-            {job.status === "cancelled"
-              ? "Classification job was cancelled"
-              : "Classification job failed"}
-          </p>
-          {job.error && (
-            <p className="text-xs text-muted-foreground mt-1">{job.error}</p>
-          )}
+    <div
+      className={`rounded-xl border p-6 space-y-4 ${
+        isCancelled
+          ? "border-border bg-card"
+          : "border-destructive/30 bg-destructive/5"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <HugeiconsIcon
+            icon={isCancelled ? Cancel01Icon : AlertCircleIcon}
+            className={`h-5 w-5 mt-0.5 shrink-0 ${
+              isCancelled ? "text-muted-foreground" : "text-destructive"
+            }`}
+          />
+          <div>
+            <p
+              className={`text-sm font-medium ${
+                isCancelled ? "text-foreground" : "text-destructive"
+              }`}
+            >
+              {isCancelled
+                ? "Classification job was cancelled"
+                : "Classification job failed"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isCancelled
+                ? "The job was stopped before all questions were processed. Start a new job to classify the remaining questions."
+                : "No questions could be classified. Review the error below, then retry."}
+            </p>
+          </div>
         </div>
+        <JobStatusBadge status={job.status} />
       </div>
+
+      {/* Outcome counters — preserved for cancelled jobs too */}
+      {(job.total > 0 || job.processed > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <SummaryCell label="Processed" value={job.processed} />
+          <SummaryCell label="Total" value={job.total} />
+          <SummaryCell
+            label="Succeeded"
+            value={job.succeeded}
+            highlight={job.succeeded > 0 ? "success" : undefined}
+          />
+          <SummaryCell
+            label="Failed"
+            value={job.failed}
+            highlight={job.failed > 0 ? "destructive" : undefined}
+          />
+        </div>
+      )}
+
+      {job.error && (
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <p className="text-xs font-medium text-muted-foreground">Error</p>
+          <p className="text-xs text-foreground mt-1 wrap-break-words">
+            {job.error}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Check the provider configuration and credentials, then retry. The
+            message above is provided by the server and never contains secrets.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
-        {job.status !== "cancelled" && (
+        {!isCancelled && (
           <Button
             size="sm"
             variant="outline"
@@ -436,7 +567,11 @@ function ClassificationFailed({
             {isRetrying ? "Retrying…" : "Retry Failed Questions"}
           </Button>
         )}
-        <Button size="sm" render={<Link to="/admin/questions/classification" />} className="gap-2">
+        <Button
+          size="sm"
+          render={<Link to="/admin/questions/classification" />}
+          className="gap-2"
+        >
           <HugeiconsIcon icon={Tag01Icon} className="h-3.5 w-3.5" />
           Start New Job
         </Button>
@@ -454,14 +589,41 @@ const EXCEPTION_FILTERS: { value: ExceptionFilter; label: string }[] = [
   { value: "low_confidence", label: "Low Confidence" },
 ];
 
+/**
+ * Backend diagnostic categories → readable labels. Backend may add new
+ * categories at any time, so this is a best-effort mapping with a readable
+ * fallback (raw category humanized) — never a closed enum.
+ */
+const FAILURE_CATEGORY_LABELS: Record<string, string> = {
+  provider_credential: "Provider credential error",
+  provider_rate_limit: "Rate limited",
+  provider_server: "Provider unavailable",
+  model_config: "Model/configuration error",
+  timeout_network: "Network/timeout error",
+  classification_validation: "Classification validation error",
+  unexpected: "Unexpected error",
+  no_active_concepts: "No active concepts",
+  database: "Database error",
+};
+
+function failureCategoryLabel(category: string | null | undefined): string {
+  if (!category) return "Failed";
+  return (
+    FAILURE_CATEGORY_LABELS[category] ??
+    category.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())
+  );
+}
+
 function ExceptionPanel({ jobId }: { jobId: string }) {
   const [filter, setFilter] = React.useState<ExceptionFilter>("all");
   const [page, setPage] = React.useState(1);
-  const [reviewQuestion, setReviewQuestion] = React.useState<AdminQuestion | null>(null);
+  const [reviewQuestion, setReviewQuestion] =
+    React.useState<AdminQuestion | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: aiClassificationKeys.exceptions(jobId, { filter, page }),
-    queryFn: () => getClassificationJobExceptions(jobId, { filter, page, limit: 25 }),
+    queryFn: () =>
+      getClassificationJobExceptions(jobId, { filter, page, limit: 25 }),
   });
 
   return (
@@ -471,7 +633,10 @@ function ExceptionPanel({ jobId }: { jobId: string }) {
         {EXCEPTION_FILTERS.map((f) => (
           <button
             key={f.value}
-            onClick={() => { setFilter(f.value); setPage(1); }}
+            onClick={() => {
+              setFilter(f.value);
+              setPage(1);
+            }}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               filter === f.value
                 ? "bg-card shadow-sm text-foreground"
@@ -486,7 +651,10 @@ function ExceptionPanel({ jobId }: { jobId: string }) {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/40" />
+            <div
+              key={i}
+              className="h-12 animate-pulse rounded-lg bg-muted/40"
+            />
           ))}
         </div>
       )}
@@ -597,6 +765,11 @@ function ExceptionRow({
     low_confidence: "text-muted-foreground bg-muted",
   };
 
+  const isFailed = item.reason === "failed";
+  const detail = isFailed
+    ? (item.failureReason ?? item.failureCategory ?? null)
+    : null;
+
   // Build a minimal AdminQuestion stub for the QuestionDialog
   function openReview() {
     // We only have partial data; open the dialog with what we have.
@@ -630,20 +803,43 @@ function ExceptionRow({
   return (
     <tr className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
       <td className="px-4 py-3 max-w-xs">
-        <p className="text-sm line-clamp-2 text-foreground">{item.questionText}</p>
+        <p className="text-sm line-clamp-2 text-foreground">
+          {item.questionText}
+        </p>
         <p className="text-xs text-muted-foreground mt-0.5">{item.subject}</p>
       </td>
       <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
-        {item.confidence !== null ? `${Math.round(item.confidence * 100)}%` : "—"}
+        {item.confidence !== null
+          ? `${Math.round(item.confidence * 100)}%`
+          : isFailed
+            ? "— no AI suggestion"
+            : "—"}
       </td>
       <td className="px-4 py-3">
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            reasonColors[item.reason] ?? "text-muted-foreground bg-muted"
-          }`}
-        >
-          {reasonLabels[item.reason] ?? item.reason}
-        </span>
+        <div className="space-y-1">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              reasonColors[item.reason] ?? "text-muted-foreground bg-muted"
+            }`}
+          >
+            {isFailed
+              ? failureCategoryLabel(item.failureCategory)
+              : (reasonLabels[item.reason] ?? item.reason)}
+          </span>
+          {detail && (
+            <p
+              className="text-[11px] text-muted-foreground max-w-xs wrap-break-words"
+              title={detail}
+            >
+              {detail}
+            </p>
+          )}
+          {item.reason === "low_confidence" && (
+            <p className="text-[11px] text-muted-foreground">
+              AI suggestion — not yet the canonical classification
+            </p>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3 text-right">
         <Button size="sm" variant="outline" onClick={openReview}>
@@ -665,7 +861,7 @@ function SummaryCell({
   label: string;
   value: number;
   note?: string;
-  highlight?: "success" | "info" | "warning";
+  highlight?: "success" | "info" | "warning" | "destructive";
 }) {
   const numColor =
     highlight === "success"
@@ -674,7 +870,9 @@ function SummaryCell({
         ? "text-info"
         : highlight === "warning"
           ? "text-warning"
-          : "text-foreground";
+          : highlight === "destructive"
+            ? "text-destructive"
+            : "text-foreground";
 
   return (
     <div className="rounded-lg bg-muted/30 px-3 py-3 text-center">
@@ -700,19 +898,21 @@ function ConfidenceRow({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-muted-foreground w-32 shrink-0">{label}</span>
+      <span className="text-xs text-muted-foreground w-32 shrink-0">
+        {label}
+      </span>
       <div className="flex-1 h-2 rounded-full bg-muted/50 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${colorClass}`}
           style={{ width: `${widthPct}%` }}
         />
       </div>
-      <span className="text-xs font-medium tabular-nums w-8 text-right">{count}</span>
+      <span className="text-xs font-medium tabular-nums w-8 text-right">
+        {count}
+      </span>
     </div>
   );
 }
-
-
 
 // ─── Page Orchestrator ────────────────────────────────────────────────────────
 
@@ -728,8 +928,6 @@ export default function ClassificationJobPage() {
       </Alert>
     );
   }
-
-  const isTerminal = React.useRef(false);
 
   const {
     data: job,
@@ -764,7 +962,9 @@ export default function ClassificationJobPage() {
   const cancelJob = useMutation({
     mutationFn: () => cancelClassificationJob(jobId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiClassificationKeys.job(jobId) });
+      queryClient.invalidateQueries({
+        queryKey: aiClassificationKeys.job(jobId),
+      });
       toast.info("Job cancelled");
     },
     onError: (err) => {
@@ -828,7 +1028,10 @@ export default function ClassificationJobPage() {
       {jobLoading && (
         <div className="space-y-3 pt-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-xl bg-muted/40"
+            />
           ))}
         </div>
       )}
@@ -867,20 +1070,21 @@ export default function ClassificationJobPage() {
               job={job}
               results={results}
               onAccepted={handleAccepted}
+              onRetryFailed={() => retryJob.mutate()}
+              isRetryingFailed={retryJob.isPending}
             />
           )}
         </>
       )}
 
       {/* ── Terminal: failed / cancelled ─────────────────────────────── */}
-      {job &&
-        (job.status === "failed" || job.status === "cancelled") && (
-          <ClassificationFailed
-            job={job}
-            onRetry={() => retryJob.mutate()}
-            isRetrying={retryJob.isPending}
-          />
-        )}
+      {job && (job.status === "failed" || job.status === "cancelled") && (
+        <ClassificationFailed
+          job={job}
+          onRetry={() => retryJob.mutate()}
+          isRetrying={retryJob.isPending}
+        />
+      )}
     </div>
   );
 }

@@ -126,8 +126,15 @@ export interface AiClassificationJob {
   subject: string | null;
   total: number;
   processed: number;
+  /** Outcome counters — reliable, backend-maintained. */
+  succeeded: number;
+  failed: number;
   skipped: number;
   status: AiJobStatus;
+  /**
+   * Representative failure reason. Present whenever `failed > 0`
+   * (including `partial` jobs), not only for `failed` jobs.
+   */
   error: string | null;
   createdAt: string;
   completedAt: string | null;
@@ -154,6 +161,14 @@ export interface AiJobExceptionItem {
   confidence: number | null;
   status: string;
   reason: "failed" | "needs_review" | "low_confidence";
+  /**
+   * Backend-provided diagnostic category (e.g. provider_credential,
+   * provider_rate_limit, timeout_network, …). Present for failed
+   * classifications; treated as an open set, not a closed enum.
+   */
+  failureCategory: string | null;
+  /** Sanitized human-readable failure reason from the backend. */
+  failureReason: string | null;
 }
 
 export interface AiJobExceptionsResult {
@@ -176,4 +191,7 @@ export interface ExceptionQuery {
   filter?: ExceptionFilter;
   page?: number;
   limit?: number;
+  /** Confidence range (0..1), optional backend filtering. */
+  minConfidence?: number;
+  maxConfidence?: number;
 }

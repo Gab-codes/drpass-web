@@ -10,8 +10,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
-import TopicClassificationSetup from "./classification/index";
-import ClassificationJobPage from "./classification/job";
+import TopicClassificationSetup from "./index";
+import ClassificationJobPage from "./job";
 import { getAdminSubjects } from "@/api/questions";
 import {
   createClassificationJob,
@@ -56,6 +56,8 @@ const makeJob = (overrides: Partial<AiClassificationJob> = {}): AiClassification
   subject: "Physics",
   total: 100,
   processed: 0,
+  succeeded: 0,
+  failed: 0,
   skipped: 0,
   status: "queued",
   error: null,
@@ -159,7 +161,7 @@ describe("TopicClassificationSetup", () => {
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Physics" } });
     fireEvent.click(screen.getByRole("button", { name: /Start AI Classification/i }));
     await waitFor(() => {
-      expect(createClassificationJob).toHaveBeenCalledWith({
+      expect(vi.mocked(createClassificationJob).mock.calls[0][0]).toEqual({
         subject: "Physics",
         force: false,
       });
@@ -175,7 +177,7 @@ describe("TopicClassificationSetup", () => {
     fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(screen.getByRole("button", { name: /Start AI Classification/i }));
     await waitFor(() => {
-      expect(createClassificationJob).toHaveBeenCalledWith({
+      expect(vi.mocked(createClassificationJob).mock.calls[0][0]).toEqual({
         subject: "Chemistry",
         force: true,
       });
@@ -238,7 +240,7 @@ describe("ClassificationJobPage", () => {
       makeResults({ failed: 5, needsReview: 3 })
     );
     renderJobPage();
-    await screen.findByText("Review Exceptions");
+    await screen.findByRole("button", { name: /Review Exceptions/i });
     expect(getClassificationJobExceptions).not.toHaveBeenCalled();
   });
 
@@ -279,5 +281,165 @@ describe("ClassificationJobPage", () => {
     await waitFor(() => {
       expect(acceptAllClassifications).toHaveBeenCalledWith("job-1");
     });
+  });
+});
+
+// ─── Terminal states & failure diagnostics ────────────────────────────────────
+
+describe("ClassificationJobPage — terminal states & failure diagnostics", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders a partial job with its own status and a retry action, not as generic success", async () => {
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({
+        status: "partial",
+        processed: 100,
+        succeeded: 85,
+        failed: 15,
+        error: "Provider error: rate limited",
+      })
+    );
+    vi.mocked(getClassificationJobResults).mockResolvedValue(
+      makeResults({
+        status: "partial",
+        failed: 15,
+        suggested: 70,
+        confidence: { high: 50, medium: 20, low: 0 },
+      })
+    );
+    renderJobPage();
+    expect(await screen.findByText("Classification Summary")).toBeInTheDocument();
+    expect(await screen.findByText("Partial")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Accept All Suggestions/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Retry Failed Questions/i })).toBeInTheDocument();
+  });
+
+  it("shows job-level error and counters for a failed job", async () => {
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({
+        status: "failed",
+        total: 40,
+        processed: 40,
+        succeeded: 0,
+        failed: 40,
+        error: "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)",
+      })
+    );
+    renderJobPage();
+    expect(await screen.findByText("Classification job failed")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Processed")).toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Retry Failed Questions/i })).toBeInTheDocument();
+  });
+
+  it("preserves counts for a cancelled job without presenting it as failed", async () => {
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({
+        status: "cancelled",
+        total: 40,
+        processed: 25,
+        succeeded: 20,
+        failed: 5,
+      })
+    );
+    renderJobPage();
+    expect(await screen.findByText("Classification job was cancelled")).toBeInTheDocument();
+    expect(await screen.findByText("Cancelled")).toBeInTheDocument();
+    expect(screen.getByText("Succeeded")).toBeInTheDocument();
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+  });
+
+  it("shows failures during processing without treating the job as finished", async () => {
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({
+        status: "processing",
+        total: 100,
+        processed: 50,
+        succeeded: 40,
+        failed: 10,
+      })
+    );
+    renderJobPage();
+    expect(await screen.findByText(/AI is classifying questions/i)).toBeInTheDocument();
+    expect(await screen.findByText("10")).toBeInTheDocument();
+    expect(screen.getByText(/failed so far/i)).toBeInTheDocument();
+    expect(getClassificationJobResults).not.toHaveBeenCalled();
+  });
+
+  it("renders failureCategory/failureReason for failed exceptions", async () => {
+    const { getClassificationJobExceptions } = await import("@/api/ai-classification");
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({ status: "completed", processed: 100 })
+    );
+    vi.mocked(getClassificationJobResults).mockResolvedValue(
+      makeResults({ failed: 1, needsReview: 0 })
+    );
+    vi.mocked(getClassificationJobExceptions).mockResolvedValue({
+      items: [
+        {
+          questionId: "q-1",
+          subject: "Physics",
+          questionText: "What is the unit of force?",
+          suggestedConceptId: null,
+          confidence: null,
+          status: "unclassified",
+          reason: "failed",
+          failureCategory: "provider_credential",
+          failureReason: "Credential error: 402: Insufficient Balance",
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 25,
+    });
+    renderJobPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Review Exceptions/i }));
+    expect(await screen.findByText("Provider credential error")).toBeInTheDocument();
+    expect(screen.getByText(/Credential error: 402: Insufficient Balance/)).toBeInTheDocument();
+    // Both the summary note and the row confirm there is no usable suggestion
+    expect(screen.getAllByText(/no AI suggestion/i).length).toBeGreaterThan(0);
+  });
+
+  it("keeps a low-confidence suggestion visually and semantically distinct from a failed classification", async () => {
+    const { getClassificationJobExceptions } = await import("@/api/ai-classification");
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({ status: "completed", processed: 100 })
+    );
+    vi.mocked(getClassificationJobResults).mockResolvedValue(
+      makeResults({ failed: 0, needsReview: 0, confidence: { high: 0, medium: 0, low: 1 } })
+    );
+    vi.mocked(getClassificationJobExceptions).mockResolvedValue({
+      items: [
+        {
+          questionId: "q-2",
+          subject: "Physics",
+          questionText: "What is the SI unit of power?",
+          suggestedConceptId: "c-1",
+          confidence: 0.55,
+          status: "ai_classified",
+          reason: "low_confidence",
+          failureCategory: null,
+          failureReason: null,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 25,
+    });
+    renderJobPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Review Exceptions/i }));
+    // Badge inside the table (filter tab shares the label, so use getAllBy)
+    expect((await screen.findAllByText("Low Confidence")).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/AI suggestion — not yet the canonical/i)).toBeInTheDocument();
+    expect(await screen.findByText("55%")).toBeInTheDocument();
   });
 });
