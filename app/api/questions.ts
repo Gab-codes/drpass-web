@@ -19,6 +19,10 @@ export const questionKeys = {
   adminSubjects: () => [...questionKeys.admin(), "subjects"] as const,
 };
 
+export const questionClassificationKeys = {
+  options: (subject: string) => ["classification", "options", subject] as const,
+};
+
 export async function importQuestions(input: ImportQuestionsInput) {
   const response = await apiClient.post<ImportQuestionsResult>(
     `${ADMIN_QUESTIONS_PATH}/import`,
@@ -54,7 +58,7 @@ export async function getAdminQuestions(filters: AdminQuestionFilters = {}) {
 
 export async function getAdminQuestion(id: string) {
   const response = await apiClient.get<AdminQuestion>(
-    `${ADMIN_QUESTIONS_PATH}/${id}`
+    `${ADMIN_QUESTIONS_PATH}/${id}`,
   );
   return response.data;
 }
@@ -112,7 +116,36 @@ export async function deactivateQuestion(id: string) {
 export async function approveAllPendingInSubject(subject: string) {
   const response = await apiClient.post<ApproveAllPendingResult>(
     `${ADMIN_QUESTIONS_PATH}/approve-all-pending`,
-    { subject }
+    { subject },
+  );
+  return response.data;
+}
+
+type AiClassificationResponse = {
+  concept: {
+    id: string;
+    name: string;
+  }[];
+};
+
+export async function getAiClassificationOptions(subject: string) {
+  const response = await apiClient.get<AiClassificationResponse>(
+    `/ai-classification/options`,
+    { params: { subject } },
+  );
+  return response.data;
+}
+
+export async function setAdminClassification({
+  questionId,
+  conceptId,
+}: {
+  questionId: string;
+  conceptId: string | null;
+}) {
+  const response = await apiClient.post(
+    `/ai-classification/questions/${questionId}/classification`,
+    { conceptId },
   );
   return response.data;
 }

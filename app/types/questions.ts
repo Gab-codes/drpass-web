@@ -2,6 +2,26 @@ import type { AnswerOption, ParsedQuestion } from "@/types/import-types";
 
 export type AdminQuestionStatus = "pending" | "approved" | "rejected";
 
+export type ClassificationStatus =
+  | "unclassified"
+  | "ai_classified"
+  | "needs_review"
+  | "admin_verified";
+
+export type ClassificationSource = "ai" | "admin";
+
+export interface ClassificationSummary {
+  suggestedConceptId: string | null;
+  suggestedConceptName: string | null;
+  confidence: number | null;
+  model: string | null;
+  status: ClassificationStatus;
+  source: ClassificationSource;
+  classifiedAt: string | null;
+  canonicalConceptId: string | null;
+  canonicalConceptName: string | null;
+}
+
 export interface AdminQuestion {
   id: string;
   importId: string | null;
@@ -21,6 +41,7 @@ export interface AdminQuestion {
   reviewedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  classification?: ClassificationSummary | null;
 }
 
 export interface AdminQuestionInput {
@@ -73,6 +94,7 @@ export interface AdminQuestionFilters {
   subject?: string;
   isActive?: boolean;
   search?: string;
+  classification?: ClassificationStatus;
   page?: number;
   pageSize?: number;
 }
@@ -87,4 +109,71 @@ export interface AdminSubjectSummary {
 
 export interface ApproveAllPendingResult {
   affected: number;
+}
+
+// ─── AI Classification Job Types ──────────────────────────────────────────────
+
+export type AiJobStatus =
+  | "queued"
+  | "processing"
+  | "completed"
+  | "partial"
+  | "failed"
+  | "cancelled";
+
+export interface AiClassificationJob {
+  id: string;
+  subject: string | null;
+  total: number;
+  processed: number;
+  skipped: number;
+  status: AiJobStatus;
+  error: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface AiClassificationJobResults {
+  jobId: string;
+  status: AiJobStatus;
+  total: number;
+  processed: number;
+  suggested: number;
+  accepted: number;
+  needsReview: number;
+  failed: number;
+  skipped: number;
+  confidence: { high: number; medium: number; low: number };
+}
+
+export interface AiJobExceptionItem {
+  questionId: string;
+  subject: string;
+  questionText: string;
+  suggestedConceptId: string | null;
+  confidence: number | null;
+  status: string;
+  reason: "failed" | "needs_review" | "low_confidence";
+}
+
+export interface AiJobExceptionsResult {
+  items: AiJobExceptionItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AcceptClassificationResult {
+  jobId: string;
+  accepted: number;
+  skippedExistingCanonical: number;
+  skippedInvalidConcept: number;
+}
+
+export type ExceptionFilter = "all" | "failed" | "needs_review" | "low_confidence";
+
+export interface ExceptionQuery {
+  filter?: ExceptionFilter;
+  page?: number;
+  limit?: number;
 }
