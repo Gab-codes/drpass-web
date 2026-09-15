@@ -1,26 +1,22 @@
 /**
- * Tests for the Topic Classification History page.
+ * Tests for the Topic Classification History landing level.
  *
  * Covers:
- *  - history rendering (subject, status, compact metrics, outcome chips)
- *  - in-flight vs. finished job semantics
- *  - navigation to the existing job detail page (React Router link)
- *  - pagination
- *  - filtering by status
+ *  - subjects are displayed with their readily-available history summary
+ *  - subjects without history are still listed (navigation, not analytics)
+ *  - the custom-selections group for jobs recorded without a subject
+ *  - client-side navigation into a subject's job list
  *  - loading / empty / error states
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import TopicClassificationHistory from "./history";
-import { listClassificationJobs } from "@/api/ai-classification";
+import { listClassificationSubjects } from "@/api/ai-classification";
 import { getAdminSubjects } from "@/api/questions";
-import type {
-  ClassificationJobSummary,
-  ClassificationJobsResult,
-} from "@/types/questions";
+import type { ClassificationSubjectSummary } from "@/types/questions";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -44,8 +40,10 @@ vi.mock("@/api/ai-classification", () => ({
       query,
     ],
     jobs: (query: object) => ["ai-classification", "jobs", query],
+    subjects: () => ["ai-classification", "subjects"],
   },
   listClassificationJobs: vi.fn(),
+  listClassificationSubjects: vi.fn(),
   createClassificationJob: vi.fn(),
   getClassificationJob: vi.fn(),
   cancelClassificationJob: vi.fn(),
@@ -58,60 +56,32 @@ vi.mock("@/api/ai-classification", () => ({
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-// Options rendered by the status select (all + six lifecycle statuses) —
-// bounds the highlight walk in the filter helper below.
-const STATUS_OPTION_COUNT = 7;
-
-const makeJob = (
-  overrides: Partial<ClassificationJobSummary> = {},
-): ClassificationJobSummary => ({
-  id: "job-1",
+const makeSummary = (
+  overrides: Partial<ClassificationSubjectSummary> = {},
+): ClassificationSubjectSummary => ({
   subject: "Chemistry",
-  status: "completed",
-  total: 10,
-  processed: 10,
-  succeeded: 8,
-  failed: 2,
-  skipped: 0,
-  suggested: 6,
-  accepted: 4,
-  needsReview: 2,
-  model: "auto",
-  error: null,
-  createdAt: "2026-01-15T09:30:00.000Z",
-  startedAt: "2026-01-15T09:31:00.000Z",
-  completedAt: "2026-01-15T09:34:00.000Z",
+  jobCount: 3,
+  totalQuestions: 1240,
+  latestJobAt: "2026-09-15T09:30:00.000Z",
+  latestStatus: "completed",
   ...overrides,
 });
 
-const makeResult = (
-  items: ClassificationJobSummary[],
-  overrides: Partial<ClassificationJobsResult> = {},
-): ClassificationJobsResult => ({
-  items,
-  total: items.length,
-  page: 1,
-  limit: 20,
-  ...overrides,
-});
-
-function renderHistory(initialEntries?: string[]) {
+function renderHistory() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={initialEntries ?? ["/admin/questions/classification/history"]}
-      >
+      <MemoryRouter initialEntries={["/admin/questions/classification/history"]}>
         <Routes>
           <Route
             path="/admin/questions/classification/history"
             element={<TopicClassificationHistory />}
           />
           <Route
-            path="/admin/questions/classification/:jobId"
-            element={<div>Job detail page</div>}
+            path="/admin/questions/classification/history/:subject"
+            element={<div>Subject jobs page</div>}
           />
         </Routes>
       </MemoryRouter>
@@ -127,207 +97,121 @@ beforeEach(() => {
     { subject: "Chemistry", total: 50, pending: 5, approved: 40, rejected: 5 },
     { subject: "Physics", total: 100, pending: 10, approved: 80, rejected: 10 },
   ]);
+  vi.mocked(listClassificationSubjects).mockResolvedValue([
+    makeSummary(),
+    makeSummary({
+      subject: "Physics",
+      jobCount: 1,
+      totalQuestions: 500,
+      latestJobAt: "2026-09-10T09:30:00.000Z",
+      latestStatus: "partial",
+    }),
+  ]);
 });
 
-// ─── Rendering ────────────────────────────────────────────────────────────────
+// ─── Subjects ─────────────────────────────────────────────────────────────────
 
-describe("TopicClassificationHistory — rendering", () => {
-  it("renders job rows with subject, status badge, date and compact metrics", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([makeJob()]),
-    );
+describe("TopicClassificationHistory (subjects) — rendering", () => {
+  it("lists each subject with its history summary", async () => {
+    renderHistory();
+
+    expect(
+      await screen.findByRole("link", {
+        name: /view classification jobs for chemistry/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /view classification jobs for physics/i,
+      }),
+    ).toBeInTheDocument();
+
+    // Only statistics that were already available are shown.
+    expect(screen.getByText(/3 jobs/)).toBeInTheDocument();
+    expect(screen.getByText(/1,240 questions/)).toBeInTheDocument();
+    expect(screen.getByText(/Last run 15 Sep 2026/)).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText(/Last run 10 Sep 2026/)).toBeInTheDocument();
+    expect(screen.getByText("Partial")).toBeInTheDocument();
+  });
+
+  it("lists subjects that have no classification history yet", async () => {
+    vi.mocked(getAdminSubjects).mockResolvedValue([
+      { subject: "Mathematics", total: 12, pending: 0, approved: 12, rejected: 0 },
+    ]);
+    vi.mocked(listClassificationSubjects).mockResolvedValue([]);
+
+    renderHistory();
+
+    expect(
+      await screen.findByRole("link", {
+        name: /view classification jobs for mathematics/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No classifications yet")).toBeInTheDocument();
+  });
+
+  it("does not claim a subject is empty while its summary is still loading", async () => {
+    vi.mocked(listClassificationSubjects).mockReturnValue(new Promise(() => {}));
+
     renderHistory();
 
     expect(await screen.findByText("Chemistry")).toBeInTheDocument();
-    expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText(/8\/10 succeeded/)).toBeInTheDocument();
-    expect(screen.getByText("2 failed")).toBeInTheDocument();
-    expect(screen.getByText("4 accepted")).toBeInTheDocument();
-    expect(screen.getByText(/2 need review/)).toBeInTheDocument();
-    expect(screen.getByText(/15 Jan 2026/)).toBeInTheDocument();
+    expect(screen.queryByText("No classifications yet")).not.toBeInTheDocument();
   });
 
-  it("shows an in-flight job as processed-so-far, not as success/failure", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([
-        makeJob({
-          id: "job-2",
-          status: "processing",
-          processed: 5,
-          succeeded: 4,
-          failed: 1,
-          error: null,
-        }),
-      ]),
-    );
+  it("groups jobs recorded without a subject as custom selections", async () => {
+    vi.mocked(listClassificationSubjects).mockResolvedValue([
+      makeSummary(),
+      makeSummary({ subject: null, jobCount: 2, totalQuestions: 12 }),
+    ]);
+
     renderHistory();
 
-    expect(await screen.findByText("Processing")).toBeInTheDocument();
-    expect(screen.getByText(/5 of 10 processed/)).toBeInTheDocument();
-    expect(screen.queryByText(/succeeded/)).not.toBeInTheDocument();
+    const custom = await screen.findByRole("link", {
+      name: /view classification jobs for custom selections/i,
+    });
+    expect(custom).toHaveAttribute(
+      "href",
+      "/admin/questions/classification/history/__unassigned__",
+    );
   });
 
-  it("hides the failure summary line for jobs without failures", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([
-        makeJob({ failed: 0, needsReview: 0, suggested: 8, accepted: 0 }),
-      ]),
-    );
+  it("omits the custom-selections group when every job has a subject", async () => {
     renderHistory();
 
-    expect(await screen.findByText(/8\/10 succeeded/)).toBeInTheDocument();
-    expect(screen.queryByText("0 failed")).not.toBeInTheDocument();
-    expect(screen.getByText("8 suggested")).toBeInTheDocument();
-  });
-
-  it("labels a job without a subject as a custom selection", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([makeJob({ subject: null })]),
-    );
-    renderHistory();
-
-    expect(await screen.findByText("Custom selection")).toBeInTheDocument();
+    await screen.findByText("Chemistry");
+    expect(
+      screen.queryByRole("link", {
+        name: /view classification jobs for custom selections/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 });
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
-describe("TopicClassificationHistory — navigation", () => {
-  it("navigates to the existing job detail page when a row is opened", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([makeJob({ id: "job-9" })]),
-    );
+describe("TopicClassificationHistory (subjects) — navigation", () => {
+  it("opens the subject's job list when a subject card is chosen", async () => {
     renderHistory();
 
-    fireEvent.click(await screen.findByText("Chemistry"));
-
-    expect(await screen.findByText("Job detail page")).toBeInTheDocument();
-  });
-});
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-describe("TopicClassificationHistory — pagination", () => {
-  it("requests the next page and shows the page readout", async () => {
-    vi.mocked(listClassificationJobs)
-      .mockResolvedValueOnce(
-        makeResult([makeJob()], { total: 40, page: 1, limit: 20 }),
-      )
-      .mockResolvedValueOnce(
-        makeResult([makeJob({ id: "job-2" })], {
-          total: 40,
-          page: 2,
-          limit: 20,
-        }),
-      );
-    renderHistory();
-
-    // The readout appears in the filter bar and (for long lists) in the
-    // page footer — assert on the collection, not a single node.
-    const readouts = await screen.findAllByText(/Page 1 of 2 \(40 total\)/);
-    expect(readouts.length).toBeGreaterThan(0);
-    expect(listClassificationJobs).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 1, limit: 20 }),
+    fireEvent.click(
+      await screen.findByRole("link", {
+        name: /view classification jobs for chemistry/i,
+      }),
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
-
-    await waitFor(() => {
-      expect(listClassificationJobs).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 2, limit: 20 }),
-      );
-    });
-    expect(
-      (await screen.findAllByText(/Page 2 of 2 \(40 total\)/)).length,
-    ).toBeGreaterThan(0);
-  });
-
-  it("hides pagination controls for a single page", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([makeJob()], { total: 3 }),
-    );
-    renderHistory();
-
-    expect(await screen.findByText("Chemistry")).toBeInTheDocument();
-    expect(screen.queryAllByText(/Page \d+ of/)).toHaveLength(0);
-    expect(screen.queryAllByRole("button", { name: "Next" })).toHaveLength(0);
-  });
-});
-
-// ─── Filtering ────────────────────────────────────────────────────────────────
-
-/**
- * Base UI's Select ignores plain click events on non-highlighted options in
- * jsdom (it requires real pointer data or keyboard highlight), so drive the
- * control with the keyboard: open, walk the highlight onto the target
- * option, commit with Enter.
- */
-async function selectStatusOption(label: string) {
-  const trigger = screen.getByRole("combobox", { name: /filter by status/i });
-  fireEvent.keyDown(trigger, { key: "ArrowDown" }); // opens the popup
-  await screen.findByRole("option", { name: label });
-
-  for (let i = 0; i < STATUS_OPTION_COUNT; i += 1) {
-    if (
-      screen.getByRole("option", { name: label }).hasAttribute("data-highlighted")
-    ) {
-      break;
-    }
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
-  }
-  const target = screen.getByRole("option", { name: label });
-  expect(target).toHaveAttribute("data-highlighted");
-  fireEvent.keyDown(target, { key: "Enter" });
-}
-
-describe("TopicClassificationHistory — filtering", () => {
-  it("requests jobs filtered by status and resets to page 1", async () => {
-    vi.mocked(listClassificationJobs)
-      .mockResolvedValueOnce(makeResult([makeJob()], { total: 40, page: 1 }))
-      .mockResolvedValueOnce(makeResult([], { total: 0, page: 1 }));
-    renderHistory();
-    await screen.findByText("Chemistry");
-
-    await selectStatusOption("Queued");
-
-    await waitFor(() => {
-      expect(listClassificationJobs).toHaveBeenLastCalledWith(
-        expect.objectContaining({ status: "queued", page: 1 }),
-      );
-    });
-  });
-
-  it("shows a filter-scoped empty state with a clear-filters action", async () => {
-    vi.mocked(listClassificationJobs)
-      .mockResolvedValueOnce(makeResult([makeJob()]))
-      .mockResolvedValueOnce(makeResult([], { total: 0 }));
-    renderHistory();
-    await screen.findByText("Chemistry");
-
-    await selectStatusOption("Queued");
-
-    expect(
-      await screen.findByText(/No classification jobs match these filters/),
-    ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /clear filters/i }));
-
-    await waitFor(() => {
-      expect(listClassificationJobs).toHaveBeenLastCalledWith(
-        expect.not.objectContaining({ status: expect.anything() }),
-      );
-    });
-    expect(
-      await screen.findByText("No classification jobs yet"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Subject jobs page")).toBeInTheDocument();
   });
 });
 
 // ─── Loading / empty / error ──────────────────────────────────────────────────
 
-describe("TopicClassificationHistory — states", () => {
-  it("shows a loading state while the history is being fetched", () => {
-    vi.mocked(listClassificationJobs).mockReturnValue(new Promise(() => {}));
+describe("TopicClassificationHistory (subjects) — states", () => {
+  it("shows a loading state while the subjects are being fetched", () => {
+    vi.mocked(getAdminSubjects).mockReturnValue(new Promise(() => {}));
+    vi.mocked(listClassificationSubjects).mockReturnValue(new Promise(() => {}));
+
     renderHistory();
 
     expect(
@@ -336,30 +220,39 @@ describe("TopicClassificationHistory — states", () => {
     expect(screen.queryByText("Chemistry")).not.toBeInTheDocument();
   });
 
-  it("shows a first-run empty state with a path to start a classification", async () => {
-    vi.mocked(listClassificationJobs).mockResolvedValue(
-      makeResult([], { total: 0 }),
-    );
+  it("shows an empty state when no subject has questions yet", async () => {
+    vi.mocked(getAdminSubjects).mockResolvedValue([]);
+    vi.mocked(listClassificationSubjects).mockResolvedValue([]);
+
     renderHistory();
 
+    expect(await screen.findByText("No subjects yet")).toBeInTheDocument();
     expect(
-      await screen.findByText("No classification jobs yet"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /start a classification/i }),
+      screen.getByRole("link", { name: /go to question bank/i }),
     ).toBeInTheDocument();
   });
 
-  it("shows an error state when the history fails to load", async () => {
-    vi.mocked(listClassificationJobs).mockRejectedValue(
-      new Error("network down"),
-    );
+  it("shows an error state when the subjects fail to load", async () => {
+    vi.mocked(getAdminSubjects).mockRejectedValue(new Error("network down"));
+
     renderHistory();
 
     // getApiErrorMessage surfaces plain Error messages verbatim.
     expect(await screen.findByText(/network down/i)).toBeInTheDocument();
   });
+
+  it("still lists subjects when only the history summary fails", async () => {
+    vi.mocked(listClassificationSubjects).mockRejectedValue(
+      new Error("history down"),
+    );
+
+    renderHistory();
+
+    expect(await screen.findByText(/history down/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /view classification jobs for chemistry/i,
+      }),
+    ).toBeInTheDocument();
+  });
 });
-
-
-

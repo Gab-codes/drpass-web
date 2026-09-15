@@ -210,6 +210,8 @@ export interface ExceptionQuery {
 export interface ClassificationJobsQuery {
   subject?: string;
   status?: AiJobStatus;
+  /** Only jobs recorded without a subject (targeted selections). */
+  unassigned?: boolean;
   page?: number;
   limit?: number;
 }
@@ -244,4 +246,18 @@ export interface ClassificationJobsResult {
   total: number;
   page: number;
   limit: number;
+}
+
+/**
+ * One subject's classification-history summary — the landing level of the
+ * subject-first history. Derived on read from the job history, never stored.
+ * `subject` is null for the "custom selections" group (jobs recorded without
+ * a subject). Dates arrive as ISO strings over HTTP.
+ */
+export interface ClassificationSubjectSummary {
+  subject: string | null;
+  jobCount: number;
+  totalQuestions: number;
+  latestJobAt: string | null;
+  latestStatus: AiJobStatus | null;
 }

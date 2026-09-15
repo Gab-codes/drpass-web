@@ -32,6 +32,7 @@ export default [
     route("admin/questions/:subject", "routes/admin/questions/subject.tsx"),
     route("admin/questions/classification", "routes/admin/questions/classification/index.tsx"),
     route("admin/questions/classification/history", "routes/admin/questions/classification/history.tsx"),
+    route("admin/questions/classification/history/:subject", "routes/admin/questions/classification/history-subject.tsx"),
     route("admin/questions/classification/:jobId", "routes/admin/questions/classification/job.tsx"),
     route("admin/question-sets", "routes/admin/question-sets.tsx"),
     route("admin/imports", "routes/admin/imports/index.tsx"),

@@ -14,6 +14,7 @@ import type {
   ExceptionQuery,
   ClassificationJobsQuery,
   ClassificationJobsResult,
+  ClassificationSubjectSummary,
 } from "@/types/questions";
 
 const BASE = "/ai-classification";
@@ -29,6 +30,7 @@ export const aiClassificationKeys = {
     [...aiClassificationKeys.all, "exceptions", id, query] as const,
   jobs: (query: ClassificationJobsQuery) =>
     [...aiClassificationKeys.all, "jobs", query] as const,
+  subjects: () => [...aiClassificationKeys.all, "subjects"] as const,
 };
 
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
@@ -50,6 +52,20 @@ export async function listClassificationJobs(
   const { data } = await apiClient.get<ClassificationJobsResult>(
     `${BASE}/jobs`,
     { params: query },
+  );
+  return data;
+}
+
+/**
+ * Subjects with their classification-history summary — the landing level of
+ * the subject-first history. Same source of truth as `listClassificationJobs`
+ * (`ai_classification_jobs`), aggregated on read.
+ */
+export async function listClassificationSubjects(): Promise<
+  ClassificationSubjectSummary[]
+> {
+  const { data } = await apiClient.get<ClassificationSubjectSummary[]>(
+    `${BASE}/subjects`,
   );
   return data;
 }
