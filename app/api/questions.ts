@@ -56,6 +56,28 @@ export async function getAdminQuestions(filters: AdminQuestionFilters = {}) {
   return response.data;
 }
 
+/**
+ * Resolve the ids of every question matching `filters`, in a SINGLE request.
+ *
+ * Used by the Topic Classification setup screen to materialise an explicit
+ * "select all eligible" selection. The list endpoint orders by `createdAt`
+ * (non-unique for bulk imports), so walking offset pages could duplicate or
+ * skip rows; `total` — from the caller's list-query meta — is passed as
+ * `pageSize` instead. The backend applies no pageSize ceiling. Only ids are
+ * retained; the full records are discarded.
+ */
+export async function getAdminQuestionIds(
+  filters: Omit<AdminQuestionFilters, "page" | "pageSize">,
+  total: number,
+) {
+  if (total <= 0) return [];
+  const response = await apiClient.get<{ data: Array<{ id: string }> }>(
+    ADMIN_QUESTIONS_PATH,
+    { params: { ...filters, page: 1, pageSize: total } },
+  );
+  return [...new Set(response.data.data.map((q) => q.id))];
+}
+
 export async function getAdminQuestion(id: string) {
   const response = await apiClient.get<AdminQuestion>(
     `${ADMIN_QUESTIONS_PATH}/${id}`,

@@ -12,7 +12,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import TopicClassificationSetup from "./index";
 import ClassificationJobPage from "./job";
-import { getAdminSubjects } from "@/api/questions";
+import {
+  getAdminQuestions,
+  getAdminQuestionIds,
+  getAdminSubjects,
+} from "@/api/questions";
 import {
   createClassificationJob,
   getClassificationJob,
@@ -20,7 +24,11 @@ import {
   acceptThresholdClassifications,
   acceptAllClassifications,
 } from "@/api/ai-classification";
-import type { AiClassificationJob, AiClassificationJobResults } from "@/types/questions";
+import type {
+  AdminQuestion,
+  AiClassificationJob,
+  AiClassificationJobResults,
+} from "@/types/questions";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +37,8 @@ vi.mock("@/api/questions", async (importOriginal) => {
   return {
     ...actual,
     getAdminSubjects: vi.fn(),
+    getAdminQuestions: vi.fn(),
+    getAdminQuestionIds: vi.fn(),
   };
 });
 
@@ -80,6 +90,45 @@ const makeResults = (overrides: Partial<AiClassificationJobResults> = {}): AiCla
   ...overrides,
 });
 
+// ─── Question fixtures ────────────────────────────────────────────────────────
+
+const makeQuestion = (
+  overrides: Partial<AdminQuestion> = {},
+): AdminQuestion => ({
+  id: "q-1",
+  importId: null,
+  subject: "Chemistry",
+  year: 2024,
+  text: "What is the atomic number of carbon?",
+  textHash: "hash-1",
+  optionA: "6",
+  optionB: "12",
+  optionC: "14",
+  optionD: "8",
+  correctAnswer: "A",
+  status: "approved",
+  isActive: true,
+  createdBy: null,
+  updatedBy: null,
+  reviewedBy: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  classification: null,
+  ...overrides,
+});
+
+function listResponse(
+  questions: AdminQuestion[],
+  total = questions.length,
+  page = 1,
+  pageSize = 50,
+) {
+  return {
+    data: questions,
+    meta: { total, page, pageSize, totalPages: Math.ceil(total / pageSize) },
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeQueryClient() {
@@ -99,6 +148,22 @@ function renderSetup() {
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
+  );
+}
+
+async function selectSubject(name = "Chemistry") {
+  await screen.findByRole("combobox");
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: name } });
+  // Wait for the eligible list to finish loading: the count text and the row
+  // checkboxes (including the page header checkbox) only settle once data
+  // arrives, and the header checkbox is disabled while loading.
+  await screen.findByText(/eligible question/);
+  await waitFor(() =>
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Select all questions on this page",
+      }),
+    ).toBeEnabled(),
   );
 }
 
@@ -125,6 +190,10 @@ describe("TopicClassificationSetup", () => {
       { subject: "Physics", total: 100, pending: 10, approved: 80, rejected: 10 },
       { subject: "Chemistry", total: 50, pending: 5, approved: 40, rejected: 5 },
     ]);
+    vi.mocked(getAdminQuestions).mockResolvedValue(
+      listResponse([makeQuestion()]),
+    );
+    vi.mocked(getAdminQuestionIds).mockResolvedValue(["q-1"]);
   });
 
   it("renders the page heading and description", async () => {
@@ -147,22 +216,36 @@ describe("TopicClassificationSetup", () => {
     expect(await screen.findByText("80")).toBeInTheDocument(); // approved count
   });
 
-  it("disables start button when no subject is selected", async () => {
+  it("disables the CTA and makes no request when nothing is selected", async () => {
     renderSetup();
     await screen.findByRole("combobox");
-    const btn = screen.getByRole("button", { name: /Start AI Classification/i });
-    expect(btn).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Classify 0 Questions" }),
+    ).toBeDisabled();
+
+    await selectSubject();
+    expect(
+      screen.getByRole("button", { name: "Classify 0 Questions" }),
+    ).toBeDisabled();
+    expect(createClassificationJob).not.toHaveBeenCalled();
   });
 
-  it("calls createClassificationJob and navigates on success", async () => {
+  it("creates the job with the explicitly selected question ids", async () => {
     vi.mocked(createClassificationJob).mockResolvedValue(makeJob({ id: "new-job" }));
     renderSetup();
-    await screen.findByRole("combobox");
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Physics" } });
-    fireEvent.click(screen.getByRole("button", { name: /Start AI Classification/i }));
+    await selectSubject();
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Start Classification" }),
+    );
+
     await waitFor(() => {
       expect(vi.mocked(createClassificationJob).mock.calls[0][0]).toEqual({
-        subject: "Physics",
+        questionIds: ["q-1"],
         force: false,
       });
     });
@@ -172,16 +255,239 @@ describe("TopicClassificationSetup", () => {
   it("passes force=true when the toggle is enabled", async () => {
     vi.mocked(createClassificationJob).mockResolvedValue(makeJob());
     renderSetup();
-    await screen.findByRole("combobox");
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Chemistry" } });
+    await selectSubject();
+
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: /Start AI Classification/i }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Start Classification" }),
+    );
+
     await waitFor(() => {
       expect(vi.mocked(createClassificationJob).mock.calls[0][0]).toEqual({
-        subject: "Chemistry",
+        questionIds: ["q-1"],
         force: true,
       });
     });
+  });
+
+  // ─── Question selection ─────────────────────────────────────────────────────
+
+  it("shows the eligible question count and the selected count", async () => {
+    vi.mocked(getAdminQuestions).mockResolvedValue(
+      listResponse([makeQuestion()], 762, 1, 50),
+    );
+    renderSetup();
+    await selectSubject();
+
+    expect(
+      await screen.findByText("762 eligible questions"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+  });
+
+  it("adds a question id to the selection and enables the CTA", async () => {
+    renderSetup();
+    await selectSubject();
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
+    );
+
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /atomic number of carbon/i }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Classify 1 Question" }),
+    ).toBeEnabled();
+  });
+
+  it("removes a question id from the selection when unchecked", async () => {
+    renderSetup();
+    await selectSubject();
+
+    const row = await screen.findByRole("checkbox", {
+      name: /atomic number of carbon/i,
+    });
+    fireEvent.click(row);
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+
+    fireEvent.click(row);
+    expect(await screen.findByText("0 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Classify 0 Questions" }),
+    ).toBeDisabled();
+  });
+
+  it("pluralises the CTA label for the number of selected questions", async () => {
+    const questions = Array.from({ length: 12 }, (_, i) =>
+      makeQuestion({ id: `q-${i + 1}`, text: `Question number ${i + 1}` }),
+    );
+    vi.mocked(getAdminQuestions).mockResolvedValue(listResponse(questions, 12));
+    renderSetup();
+    await selectSubject();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Select all questions on this page",
+      }),
+    );
+
+    expect(await screen.findByText("12 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Classify 12 Questions" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps selections when paging away and back", async () => {
+    vi.mocked(getAdminQuestions).mockImplementation(async (filters = {}) => {
+      if ((filters.page ?? 1) === 1) {
+        return listResponse(
+          [makeQuestion({ id: "q-1", text: "Page one question" })],
+          2,
+          1,
+          1,
+        );
+      }
+      return listResponse(
+        [makeQuestion({ id: "q-2", text: "Page two question" })],
+        2,
+        2,
+        1,
+      );
+    });
+    renderSetup();
+    await selectSubject();
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /Page one question/i }),
+    );
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /Page two question/i }),
+    );
+    expect(await screen.findByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Prev" }));
+    expect(
+      await screen.findByRole("checkbox", { name: /Page one question/i }),
+    ).toBeChecked();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+  });
+
+  it("selects every question on the current page and clears only that page", async () => {
+    vi.mocked(getAdminQuestions).mockImplementation(async (filters = {}) => {
+      if ((filters.page ?? 1) === 1) {
+        return listResponse(
+          [makeQuestion({ id: "q-1", text: "Page one question" })],
+          2,
+          1,
+          1,
+        );
+      }
+      return listResponse(
+        [makeQuestion({ id: "q-2", text: "Page two question" })],
+        2,
+        2,
+        1,
+      );
+    });
+    const headerCheckbox = () =>
+      screen.getByRole("checkbox", {
+        name: "Select all questions on this page",
+      });
+    renderSetup();
+    await selectSubject();
+
+    // Page 1: the header checkbox selects every visible question.
+    fireEvent.click(headerCheckbox());
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+
+    // Page 2: same action, on the other page.
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByRole("checkbox", { name: /Page two question/i });
+    fireEvent.click(headerCheckbox());
+    expect(await screen.findByText("2 selected")).toBeInTheDocument();
+
+    // Back on page 1: unchecking clears the visible page only.
+    fireEvent.click(screen.getByRole("button", { name: "Prev" }));
+    await screen.findByRole("checkbox", { name: /Page one question/i });
+    fireEvent.click(headerCheckbox());
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /Page one question/i }),
+    ).not.toBeChecked();
+  });
+
+  it("selects all eligible questions across the result set in one request", async () => {
+    const allIds = Array.from({ length: 762 }, (_, i) => `q-${i + 1}`);
+    vi.mocked(getAdminQuestions).mockResolvedValue(
+      listResponse([makeQuestion({ id: "q-1" })], 762, 1, 50),
+    );
+    vi.mocked(getAdminQuestionIds).mockResolvedValue(allIds);
+    renderSetup();
+    await selectSubject();
+
+    // The whole-result-set action is offered once the visible page is selected.
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Select all questions on this page",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select all 762 eligible questions",
+      }),
+    );
+
+    expect(await screen.findByText("762 selected")).toBeInTheDocument();
+    // One request materialises the ids — no page-by-page fetching.
+    expect(getAdminQuestionIds).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText(/All 762 eligible questions are selected/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Classify 762 Questions" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Start Classification" }),
+    );
+
+    await waitFor(() => {
+      expect(vi.mocked(createClassificationJob).mock.calls[0][0]).toEqual({
+        questionIds: allIds,
+        force: false,
+      });
+    });
+  });
+
+  it("preserves the selection when job creation fails", async () => {
+    vi.mocked(createClassificationJob).mockRejectedValue(new Error("boom"));
+    renderSetup();
+    await selectSubject();
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Start Classification" }),
+    );
+
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    // Selection survives so the admin can retry without re-selecting.
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /atomic number of carbon/i }),
+    ).toBeChecked();
+    expect(screen.queryByText("Job Page")).not.toBeInTheDocument();
   });
 });
 

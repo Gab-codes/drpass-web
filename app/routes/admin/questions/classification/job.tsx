@@ -940,7 +940,7 @@ export default function ClassificationJobPage() {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (!status || jobErr || TERMINAL_STATUSES.has(status)) return false;
-      return 10000;
+      return 5000;
     },
     refetchOnWindowFocus: false,
   });

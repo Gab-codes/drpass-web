@@ -14,17 +14,20 @@ import { Button } from "@/components/ui/button";
 
 interface QuestionFiltersProps {
   search: string;
-  statusFilter: AdminQuestionStatus | "all";
-  activeFilter: string;
   page: number;
   totalPages: number;
   total: number;
   isLoading: boolean;
   onSearchChange: (value: string) => void;
-  onStatusChange: (value: AdminQuestionStatus | "all") => void;
-  onActiveChange: (value: string) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
+  // Optional: each control renders only when its handler is supplied, so the
+  // classification setup screen can reuse the search + pagination chrome
+  // without the status/activity pickers it does not expose.
+  statusFilter?: AdminQuestionStatus | "all";
+  activeFilter?: string;
+  onStatusChange?: (value: AdminQuestionStatus | "all") => void;
+  onActiveChange?: (value: string) => void;
 }
 
 export function QuestionFilters({
@@ -76,36 +79,40 @@ export function QuestionFilters({
           aria-label="Search questions"
           className="h-8 min-w-55 flex-1"
         />
-        <Select
-          value={statusFilter}
-          onValueChange={(val) =>
-            onStatusChange(val as AdminQuestionStatus | "all")
-          }
-        >
-          <SelectTrigger className="h-8 w-35">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status === "all" ? "All statuses" : status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={activeFilter}
-          onValueChange={(val) => val && onActiveChange(val)}
-        >
-          <SelectTrigger className="h-8 w-35">
-            <SelectValue placeholder="All activity" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All activity</SelectItem>
-            <SelectItem value="true">Active</SelectItem>
-            <SelectItem value="false">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        {statusFilter !== undefined && onStatusChange && (
+          <Select
+            value={statusFilter}
+            onValueChange={(val) =>
+              onStatusChange(val as AdminQuestionStatus | "all")
+            }
+          >
+            <SelectTrigger className="h-8 w-35">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status === "all" ? "All statuses" : status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {activeFilter !== undefined && onActiveChange && (
+          <Select
+            value={activeFilter}
+            onValueChange={(val) => val && onActiveChange(val)}
+          >
+            <SelectTrigger className="h-8 w-35">
+              <SelectValue placeholder="All activity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All activity</SelectItem>
+              <SelectItem value="true">Active</SelectItem>
+              <SelectItem value="false">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {activeFilter === "true" && (
