@@ -4,11 +4,18 @@ export const questionFormSchema = z.object({
   year: z.number().int().min(1970).max(2100),
   subject: z.string().trim().min(1, "Subject is required"),
   text: z.string().trim().min(1, "Question text is required"),
-  optionA: z.string().trim().min(1, "Option A is required"),
-  optionB: z.string().trim().min(1, "Option B is required"),
-  optionC: z.string().trim().min(1, "Option C is required"),
-  optionD: z.string().trim().min(1, "Option D is required"),
-  correctAnswer: z.enum(["A", "B", "C", "D"]),
+  source: z.enum(["JAMB", "WAEC", "NECO", "GCE"]),
+  questionType: z.enum([
+    "SINGLE_CHOICE",
+    "MULTIPLE_CHOICE",
+    "TRUE_FALSE",
+    "NUMERIC",
+    "SHORT_ANSWER",
+  ]),
+  options: z
+    .array(z.object({ key: z.string(), text: z.string().trim().min(1) }))
+    .min(1),
+  correctAnswer: z.union([z.string(), z.number(), z.array(z.string())]),
 });
 
 export type QuestionFormInput = z.input<typeof questionFormSchema>;

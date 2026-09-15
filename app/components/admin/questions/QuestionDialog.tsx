@@ -41,44 +41,48 @@ import type { AdminQuestion } from "@/types/questions";
 export function adminQuestionToFormValues(
   q: AdminQuestion,
 ): QuestionFormValues {
+  // Map the backend options array ({ key, text }) into the form's
+  // A–D option slots, padding missing keys with empty text.
+  const optionText = (key: string) =>
+    q.options?.find((o) => o.key === key)?.text ?? "";
   return {
     year: q.year,
     subject: q.subject,
     text: q.text,
-    // AdminQuestion does not carry type/difficulty/explanation/source/image yet.
-    // Default to SINGLE_CHOICE so the form is immediately usable.
-    type: "SINGLE_CHOICE",
+    type: q.questionType && q.questionType !== "UNKNOWN" ? q.questionType : "SINGLE_CHOICE",
     options: [
-      { key: "A", text: q.optionA },
-      { key: "B", text: q.optionB },
-      { key: "C", text: q.optionC },
-      { key: "D", text: q.optionD },
+      { key: "A", text: optionText("A") },
+      { key: "B", text: optionText("B") },
+      { key: "C", text: optionText("C") },
+      { key: "D", text: optionText("D") },
     ],
-    correctAnswer: q.correctAnswer,
-    difficulty: null,
-    source: null,
-    explanation: null,
+    correctAnswer: typeof q.correctAnswer === "number" ? String(q.correctAnswer) : q.correctAnswer,
+    difficulty: q.difficulty,
+    source: q.source || null,
+    explanation: q.explanation,
     hasImage: false,
     image: null,
   };
 }
 
 function formValuesToAdminInput(v: QuestionFormValues) {
-  // Map back to flat shape expected by the current API.
-  // Only SINGLE_CHOICE is currently supported by the admin create/update API.
-  const getOption = (key: string) =>
-    v.options.find((o) => o.key === key)?.text ?? "";
+  // Map back to the canonical API shape (options as a { key, text } array).
+  // Only choice types carry options; other types submit null.
+  const isChoiceType =
+    v.type === "SINGLE_CHOICE" || v.type === "MULTIPLE_CHOICE" || v.type === "TRUE_FALSE";
+  const options = isChoiceType
+    ? v.options.filter((o) => o.text.trim() !== "")
+    : null;
   return {
     year: v.year ?? new Date().getFullYear(),
     subject: v.subject,
     text: v.text,
-    optionA: getOption("A"),
-    optionB: getOption("B"),
-    optionC: getOption("C"),
-    optionD: getOption("D"),
-    correctAnswer: (Array.isArray(v.correctAnswer)
-      ? v.correctAnswer[0]
-      : v.correctAnswer) as "A" | "B" | "C" | "D",
+    source: v.source ?? "",
+    questionType: v.type,
+    options,
+    correctAnswer: v.correctAnswer as string,
+    difficulty: v.difficulty,
+    explanation: v.explanation,
   };
 }
 

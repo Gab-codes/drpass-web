@@ -1,4 +1,4 @@
-import type { AnswerOption, ParsedQuestion } from "@/types/import-types";
+import type { ParsedQuestion } from "@/types/import-types";
 
 export type AdminQuestionStatus = "pending" | "approved" | "rejected";
 
@@ -25,17 +25,19 @@ export interface ClassificationSummary {
 export interface AdminQuestion {
   id: string;
   importId: string | null;
+  source: string;
   subject: string;
-  year: number;
+  year: number | null;
   text: string;
   textHash: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: AnswerOption;
+  options: QuestionOptionPair[] | null;
+  correctAnswer: string | number | string[];
+  questionType: string;
+  difficulty: string | null;
+  explanation: string | null;
   status: AdminQuestionStatus;
   isActive: boolean;
+  classificationConfidence: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   reviewedBy: string | null;
@@ -44,15 +46,22 @@ export interface AdminQuestion {
   classification?: ClassificationSummary | null;
 }
 
+/** Backend option shape: { key, text } */
+export interface QuestionOptionPair {
+  key: string;
+  text: string;
+}
+
 export interface AdminQuestionInput {
   year: number;
   subject: string;
   text: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: AnswerOption;
+  source: string;
+  questionType: string;
+  options: QuestionOptionPair[] | null;
+  correctAnswer: string | number | string[];
+  difficulty?: string | null;
+  explanation?: string | null;
 }
 
 export type AdminQuestionUpdateInput = Partial<AdminQuestionInput>;
