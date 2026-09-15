@@ -537,6 +537,99 @@ describe("ClassificationJobPage", () => {
     expect(screen.queryByRole("button", { name: /Retry/i })).not.toBeInTheDocument();
   });
 
+  it("retries failures via client-side navigation to the new job (no page reload)", async () => {
+    const { retryFailedClassification } = await import("@/api/ai-classification");
+
+    // A hard navigation is impossible to observe directly in jsdom, so replace
+    // window.location with a plain, inspectable object: the previous
+    // implementation assigned `window.location.href`, which would change href
+    // here (and reload the whole browser page in a real browser).
+    const originalLocation = window.location;
+    const fakeLocation = {
+      href: "http://localhost/",
+      assign: vi.fn(),
+      replace: vi.fn(),
+    };
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: fakeLocation,
+    });
+
+    try {
+      // job-1 is the failed job; job-2 is the retry job the mutation creates.
+      vi.mocked(getClassificationJob).mockImplementation(async (id: string) =>
+        id === "job-2"
+          ? makeJob({
+              id: "job-2",
+              subject: "Retry Subject",
+              status: "processing",
+            })
+          : makeJob({
+              id: "job-1",
+              status: "failed",
+              error: "AI provider unavailable",
+            })
+      );
+      vi.mocked(retryFailedClassification).mockResolvedValue(
+        makeJob({ id: "job-2", status: "queued" })
+      );
+
+      renderJobPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Retry Failed Questions/i })
+      );
+
+      // The retry mutation is called with the CURRENT job id.
+      await waitFor(() => {
+        expect(retryFailedClassification).toHaveBeenCalledWith("job-1");
+      });
+
+      // The newly created job renders in place — client-side router navigation.
+      expect(
+        await screen.findByText("Retry Subject — Classification Job")
+      ).toBeInTheDocument();
+      expect(vi.mocked(getClassificationJob)).toHaveBeenCalledWith("job-2");
+
+      // ...and no hard navigation / browser reload was performed.
+      expect(fakeLocation.href).toBe("http://localhost/");
+      expect(fakeLocation.assign).not.toHaveBeenCalled();
+      expect(fakeLocation.replace).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
+  it("keeps the existing error handling when retry fails", async () => {
+    const { retryFailedClassification } = await import("@/api/ai-classification");
+    vi.mocked(getClassificationJob).mockResolvedValue(
+      makeJob({ status: "failed", error: "AI provider unavailable" })
+    );
+    vi.mocked(retryFailedClassification).mockRejectedValue(
+      new Error("All questions in this job are already classified")
+    );
+
+    renderJobPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Retry Failed Questions/i })
+    );
+
+    await waitFor(() => {
+      expect(retryFailedClassification).toHaveBeenCalledWith("job-1");
+    });
+    // Still on the same failed job: a failed retry must not navigate away.
+    expect(
+      screen.getByText("Classification job failed")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Retry Failed Questions/i })
+    ).toBeEnabled();
+  });
+
   it("does NOT fetch exceptions on load — only after clicking Review Exceptions", async () => {
     const { getClassificationJobExceptions } = await import("@/api/ai-classification");
     vi.mocked(getClassificationJob).mockResolvedValue(
