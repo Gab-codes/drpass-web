@@ -204,3 +204,44 @@ export interface ExceptionQuery {
   minConfidence?: number;
   maxConfidence?: number;
 }
+
+// ─── Topic Classification History ─────────────────────────────────────────────
+
+export interface ClassificationJobsQuery {
+  subject?: string;
+  status?: AiJobStatus;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * One history row: the persisted job state plus the per-job suggestion
+ * aggregates (suggested / accepted / needs review) computed by the backend.
+ */
+export interface ClassificationJobSummary {
+  id: string;
+  subject: string | null;
+  status: AiJobStatus;
+  total: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  /** Suggestions still awaiting review (ai_classified). */
+  suggested: number;
+  /** Suggestions accepted into canonical classifications (admin_verified). */
+  accepted: number;
+  needsReview: number;
+  model: string | null;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface ClassificationJobsResult {
+  items: ClassificationJobSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
