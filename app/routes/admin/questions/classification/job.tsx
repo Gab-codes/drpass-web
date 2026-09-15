@@ -939,9 +939,10 @@ export default function ClassificationJobPage() {
     queryFn: () => getClassificationJob(jobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (!status || TERMINAL_STATUSES.has(status)) return false;
-      return 3000;
+      if (!status || jobErr || TERMINAL_STATUSES.has(status)) return false;
+      return 10000;
     },
+    refetchOnWindowFocus: false,
   });
 
   // When job transitions to terminal, fetch results immediately
@@ -957,6 +958,9 @@ export default function ClassificationJobPage() {
     queryKey: aiClassificationKeys.results(jobId),
     queryFn: () => getClassificationJobResults(jobId),
     enabled: shouldFetchResults,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
   });
 
   const cancelJob = useMutation({
