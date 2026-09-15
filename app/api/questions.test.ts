@@ -63,10 +63,9 @@ describe("question API", () => {
       getAdminQuestions({ status: "approved", isActive: true }),
     ).resolves.toEqual([question]);
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith(
-      "/api/v1/questions/admin",
-      { params: { status: "approved", isActive: true } },
-    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith("/questions/admin", {
+      params: { status: "approved", isActive: true },
+    });
   });
 
   it("creates a manual question without backend-owned fields", async () => {
@@ -89,7 +88,7 @@ describe("question API", () => {
 
     await expect(createQuestion(input)).resolves.toEqual(question);
     expect(mockedApiClient.post).toHaveBeenCalledWith(
-      "/api/v1/questions/admin",
+      "/questions/admin",
       input,
     );
   });
@@ -146,7 +145,7 @@ describe("question API", () => {
 
     await expect(importQuestions({ questions: [] })).resolves.toEqual(result);
     expect(mockedApiClient.post).toHaveBeenCalledWith(
-      "/api/v1/questions/admin/import",
+      "/questions/admin/import",
       { questions: [] },
     );
   });
@@ -161,7 +160,7 @@ describe("question API", () => {
     ).resolves.toMatchObject({ text: "Updated text" });
 
     expect(mockedApiClient.patch).toHaveBeenCalledWith(
-      "/api/v1/questions/admin/question-1",
+      "/questions/admin/question-1",
       { text: "Updated text" },
     );
   });
@@ -176,19 +175,19 @@ describe("question API", () => {
 
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       1,
-      "/api/v1/questions/admin/question-1/approve",
+      "/questions/admin/question-1/approve",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       2,
-      "/api/v1/questions/admin/question-1/reject",
+      "/questions/admin/question-1/reject",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       3,
-      "/api/v1/questions/admin/question-1/activate",
+      "/questions/admin/question-1/activate",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       4,
-      "/api/v1/questions/admin/question-1/deactivate",
+      "/questions/admin/question-1/deactivate",
     );
   });
 });
