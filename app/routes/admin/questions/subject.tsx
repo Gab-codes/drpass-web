@@ -33,7 +33,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { QuestionDialog, type QuestionDialogMode } from "@/components/admin/questions/QuestionDialog";
+import {
+  QuestionDialog,
+  type QuestionDialogMode,
+} from "@/components/admin/questions/QuestionDialog";
 import { QuestionRow } from "@/components/admin/questions/QuestionRow";
 import { BulkActionBar } from "@/components/admin/questions/BulkActionBar";
 import { QuestionFilters } from "@/components/admin/questions/QuestionFilters";
@@ -57,10 +60,13 @@ export default function SubjectQuestions() {
     null,
   );
   const [approveAllOpen, setApproveAllOpen] = React.useState(false);
-  
+
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [dialogMode, setDialogMode] = React.useState<QuestionDialogMode>("create");
-  const [dialogQuestion, setDialogQuestion] = React.useState<AdminQuestion | undefined>();
+  const [dialogMode, setDialogMode] =
+    React.useState<QuestionDialogMode>("create");
+  const [dialogQuestion, setDialogQuestion] = React.useState<
+    AdminQuestion | undefined
+  >();
 
   const filters = React.useMemo(
     () => ({
@@ -244,7 +250,7 @@ export default function SubjectQuestions() {
       finally: () => setApproveAllOpen(false),
     });
   };
-  
+
   function handleCreateClick() {
     setDialogMode("create");
     setDialogQuestion(undefined);

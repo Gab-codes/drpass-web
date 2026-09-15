@@ -16,6 +16,7 @@ import {
   Shield01Icon,
   UserGroupIcon,
   CreditCardAcceptIcon,
+  Tag01Icon,
 } from "@hugeicons/core-free-icons";
 
 import {
@@ -79,6 +80,11 @@ const data: { navMain: NavGroup[] } = {
           title: "Imports",
           url: "/admin/imports",
           icon: Upload01Icon,
+        },
+        {
+          title: "Topic Classification",
+          url: "/admin/questions/classification",
+          icon: Tag01Icon,
         },
       ],
     },
