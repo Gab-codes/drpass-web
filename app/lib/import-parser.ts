@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type {
   ParsedQuestion,
+  ParsedClassification,
   ParseSummary,
   AnswerOption,
 } from "../types/import-types";
@@ -67,6 +68,92 @@ export function toAnswerOption(v: unknown): AnswerOption | null {
 
   return null;
 }
+
+// ── Difficulty normalization ─────────────────────────────────────────────────
+
+export const VALID_DIFFICULTIES = ["EASY", "MEDIUM", "HARD"] as const;
+
+/**
+ * Normalize a raw difficulty value to the backend's question_difficulty enum.
+ * Accepts any casing ("easy" → "EASY"); unknown values are dropped to null and
+ * produce a row warning instead of failing the row or the whole import batch.
+ */
+export function parseDifficulty(raw: unknown): {
+  difficulty: string | null;
+  warning?: string;
+} {
+  if (raw == null || raw === "") return { difficulty: null };
+  const normalized = String(raw).trim().toUpperCase();
+  if ((VALID_DIFFICULTIES as readonly string[]).includes(normalized)) {
+    return { difficulty: normalized };
+  }
+  return {
+    difficulty: null,
+    warning: `Unknown difficulty "${String(raw)}" ignored`,
+  };
+}
+
+// ── Imported classification parsing ──────────────────────────────────────────
+
+/**
+ * Validate and normalize an optional imported classification from enriched
+ * JSON:
+ *
+ *   "classification": { "topic": "...", "confidence": 0.95 }
+ *
+ * Classification is always optional. A missing/empty value yields
+ * { classification: null } with no warning. A malformed structure or an
+ * invalid confidence drops the classification and produces a row warning —
+ * it must never invalidate the row or reject the import.
+ */
+export function parseClassification(raw: unknown): {
+  classification: ParsedClassification | null;
+  warning?: string;
+} {
+  if (raw == null) return { classification: null };
+
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return {
+      classification: null,
+      warning: 'Invalid classification ignored (expected an object with "topic" and "confidence")',
+    };
+  }
+
+  const record = raw as Record<string, unknown>;
+  const topic = typeof record.topic === "string" ? record.topic.trim() : "";
+  const confidence = record.confidence;
+
+  if (!topic) {
+    return {
+      classification: null,
+      warning: "Invalid classification ignored (missing topic)",
+    };
+  }
+
+  if (
+    typeof confidence !== "number" ||
+    !Number.isFinite(confidence) ||
+    confidence < 0 ||
+    confidence > 1
+  ) {
+    return {
+      classification: null,
+      warning: `Invalid classification confidence ignored (must be a number between 0 and 1)`,
+    };
+  }
+
+  return { classification: { topic, confidence } };
+}
+
+/** Append a reason to an existing statusReason using the " | " convention. */
+export function appendReason(
+  statusReason: string | undefined,
+  extra?: string,
+): string | undefined {
+  if (!extra) return statusReason;
+  return statusReason ? `${statusReason} | ${extra}` : extra;
+}
+
 
 // ── Spreadsheet metadata helpers ────────────────────────────────────────────
 
@@ -806,6 +893,9 @@ export async function parseXlsx(file: File): Promise<{
           { key: "D", text: normOptions.D },
         ];
         const rawAns = String(record.correctAnswer ?? record.answer ?? "");
+        const { difficulty, warning: difficultyWarning } = parseDifficulty(
+          record.difficulty,
+        );
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -819,7 +909,7 @@ export async function parseXlsx(file: File): Promise<{
           correctAnswer: rawAns,
           source: detectSource(sheetName, file.name),
           type: detectQuestionType(optionsArr, rawAns),
-          difficulty: record.difficulty ? String(record.difficulty) : null,
+          difficulty,
           explanation: record.explanation ? String(record.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
@@ -841,9 +931,15 @@ export async function parseXlsx(file: File): Promise<{
 
         if (yearConflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason
-            ? `${statusReason} | Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`
-            : `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
+          statusReason = appendReason(
+            statusReason,
+            `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`,
+          );
+        }
+
+        if (difficultyWarning && status !== "error") {
+          status = "warning";
+          statusReason = appendReason(statusReason, difficultyWarning);
         }
 
         allQuestions.push({ ...base, status, statusReason });
@@ -892,6 +988,9 @@ export async function parseXlsx(file: File): Promise<{
           { key: "D", text: normOptions.D },
         ];
         const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+        const { difficulty, warning: difficultyWarning } = parseDifficulty(
+          row.difficulty,
+        );
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -905,7 +1004,7 @@ export async function parseXlsx(file: File): Promise<{
           correctAnswer: rawAns,
           source: detectSource(sheetName, file.name),
           type: detectQuestionType(optionsArr, rawAns),
-          difficulty: row.difficulty ? String(row.difficulty) : null,
+          difficulty,
           explanation: row.explanation ? String(row.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
@@ -919,9 +1018,12 @@ export async function parseXlsx(file: File): Promise<{
         let { status, statusReason } = detectStatus(base);
         if (conflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason
-            ? `${statusReason} | ${conflictReason}`
-            : conflictReason;
+          statusReason = appendReason(statusReason, conflictReason);
+        }
+
+        if (difficultyWarning && status !== "error") {
+          status = "warning";
+          statusReason = appendReason(statusReason, difficultyWarning);
         }
 
         allQuestions.push({ ...base, status, statusReason });
@@ -992,6 +1094,11 @@ export async function parseJson(file: File): Promise<{
       { key: "D", text: normOptions.D },
     ];
     const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+    const { difficulty, warning: difficultyWarning } = parseDifficulty(
+      row.difficulty,
+    );
+    const { classification, warning: classificationWarning } =
+      parseClassification(row.classification);
 
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
@@ -1005,8 +1112,9 @@ export async function parseJson(file: File): Promise<{
       correctAnswer: rawAns,
       source: detectSource("JSON", file.name),
       type: detectQuestionType(optionsArr, rawAns),
-      difficulty: row.difficulty ? String(row.difficulty) : null,
+      difficulty,
       explanation: row.explanation ? String(row.explanation) : null,
+      classification,
       hasImage: detectPossibleImage(cleanText),
       image: null,
     };
@@ -1019,10 +1127,19 @@ export async function parseJson(file: File): Promise<{
     let { status, statusReason } = detectStatus(base);
     if (conflict && status === "valid") {
       status = "warning";
-      statusReason = statusReason
-        ? `${statusReason} | ${conflictReason}`
-        : conflictReason;
+      statusReason = appendReason(statusReason, conflictReason);
     }
+
+    if (difficultyWarning && status !== "error") {
+      status = "warning";
+      statusReason = appendReason(statusReason, difficultyWarning);
+    }
+
+    if (classificationWarning && status !== "error") {
+      status = "warning";
+      statusReason = appendReason(statusReason, classificationWarning);
+    }
+
     questions.push({ ...base, status, statusReason });
   }
 
@@ -1050,6 +1167,8 @@ export function buildSummary(
     errorCount: questions.filter((q) => q.status === "error").length,
     duplicateCount: questions.filter((q) => q.status === "duplicate").length,
     contextRowCount,
+    withClassificationCount: questions.filter((q) => q.classification).length,
+    withDifficultyCount: questions.filter((q) => q.difficulty).length,
   };
 }
 

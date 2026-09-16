@@ -12,6 +12,12 @@ export interface ParsedOption {
   text: string;
 }
 
+/** Optional imported topic classification carried by Kilo-enriched JSON. */
+export interface ParsedClassification {
+  topic: string;
+  confidence: number;
+}
+
 export interface ParsedQuestion {
   /** Stable client-side ID assigned during parsing (not a database ID). */
   _clientId: string;
@@ -38,6 +44,8 @@ export interface ParsedQuestion {
   duplicateResolution?: "keep" | "remove";
   /** Whether the admin has edited this question in the preview. */
   isEdited?: boolean;
+  /** Optional imported classification (present only in enriched JSON imports). */
+  classification?: ParsedClassification | null;
   hasImage: boolean;
   image: string | null;
 }
@@ -51,6 +59,10 @@ export interface ParseSummary {
   errorCount: number;
   duplicateCount: number;
   contextRowCount: number;
+  /** Questions carrying an imported topic classification. */
+  withClassificationCount: number;
+  /** Questions carrying a normalized difficulty value. */
+  withDifficultyCount: number;
 }
 
 export type ImportFormat = "xlsx" | "json";

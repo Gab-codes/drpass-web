@@ -265,6 +265,7 @@ export function useImportWorkflow() {
       type: q.type,
       difficulty: q.difficulty,
       explanation: q.explanation,
+      classification: q.classification ?? undefined,
       status:
         q.status === "duplicate" && q.duplicateResolution === "keep"
           ? ("warning" as const)

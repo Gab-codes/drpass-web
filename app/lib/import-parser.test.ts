@@ -12,6 +12,8 @@ import {
   detectHeaderRow,
   buildSummary,
   extractQuestionNumber,
+  parseClassification,
+  parseDifficulty,
 } from "./import-parser";
 import type { ParsedQuestion } from "@/types/import-types";
 
@@ -568,8 +570,140 @@ describe("extractQuestionNumber", () => {
   });
 });
 
+describe("parseClassification", () => {
+  test("accepts a valid classification", () => {
+    expect(
+      parseClassification({ topic: "Atomic Structure", confidence: 0.9 }),
+    ).toEqual({
+      classification: { topic: "Atomic Structure", confidence: 0.9 },
+    });
+  });
+
+  test("trims the topic", () => {
+    const result = parseClassification({
+      topic: "  Coke: Gasification and uses  ",
+      confidence: 0.95,
+    });
+    expect(result.classification?.topic).toBe("Coke: Gasification and uses");
+  });
+
+  test("returns null with no warning when classification is absent", () => {
+    expect(parseClassification(undefined)).toEqual({ classification: null });
+    expect(parseClassification(null)).toEqual({ classification: null });
+  });
+
+  test("drops malformed (non-object) classification with a warning", () => {
+    const result = parseClassification("Atomic Structure");
+    expect(result.classification).toBeNull();
+    expect(result.warning).toContain("Invalid classification");
+  });
+
+  test("drops classification with missing topic with a warning", () => {
+    const result = parseClassification({ confidence: 0.9 });
+    expect(result.classification).toBeNull();
+    expect(result.warning).toContain("missing topic");
+  });
+
+  test("drops classification with blank topic with a warning", () => {
+    const result = parseClassification({ topic: "   ", confidence: 0.9 });
+    expect(result.classification).toBeNull();
+    expect(result.warning).toContain("missing topic");
+  });
+
+  test("drops non-numeric confidence with a warning", () => {
+    const result = parseClassification({
+      topic: "Atomic Structure",
+      confidence: "high",
+    });
+    expect(result.classification).toBeNull();
+    expect(result.warning).toContain("confidence");
+  });
+
+  test("drops out-of-range confidence with a warning", () => {
+    for (const confidence of [-0.1, 1.5]) {
+      const result = parseClassification({ topic: "T", confidence });
+      expect(result.classification).toBeNull();
+      expect(result.warning).toContain("confidence");
+    }
+  });
+
+  test("accepts boundary confidence values", () => {
+    expect(parseClassification({ topic: "T", confidence: 0 }).classification)
+      .toEqual({ topic: "T", confidence: 0 });
+    expect(parseClassification({ topic: "T", confidence: 1 }).classification)
+      .toEqual({ topic: "T", confidence: 1 });
+  });
+});
+
+describe("parseDifficulty", () => {
+  test("normalizes casing to the enum values", () => {
+    expect(parseDifficulty("easy")).toEqual({ difficulty: "EASY" });
+    expect(parseDifficulty("Medium")).toEqual({ difficulty: "MEDIUM" });
+    expect(parseDifficulty("HARD")).toEqual({ difficulty: "HARD" });
+    expect(parseDifficulty("  medium ")).toEqual({ difficulty: "MEDIUM" });
+  });
+
+  test("returns null with no warning when absent", () => {
+    expect(parseDifficulty(null)).toEqual({ difficulty: null });
+    expect(parseDifficulty("")).toEqual({ difficulty: null });
+  });
+
+  test("drops unknown values with a warning", () => {
+    const result = parseDifficulty("impossible");
+    expect(result.difficulty).toBeNull();
+    expect(result.warning).toContain("Unknown difficulty");
+  });
+});
+
+describe("buildSummary classification/difficulty counts", () => {
+  const makeQ = (
+    overrides: Partial<ParsedQuestion> = {},
+  ): ParsedQuestion => ({
+    _clientId: "q1",
+    rowIndex: 1,
+    text: "Q",
+    options: [],
+    correctAnswer: null,
+    year: 2020,
+    subject: "M",
+    rawText: "Q",
+    source: null,
+    type: "SINGLE_CHOICE",
+    difficulty: null,
+    explanation: null,
+    hasImage: false,
+    image: null,
+    status: "valid",
+    ...overrides,
+  });
+
+  test("counts questions with and without classification", () => {
+    const summary = buildSummary([
+      makeQ({ classification: { topic: "T", confidence: 0.9 } }),
+      makeQ(),
+      makeQ(),
+    ]);
+    expect(summary.withClassificationCount).toBe(1);
+  });
+
+  test("counts questions with a difficulty", () => {
+    const summary = buildSummary([
+      makeQ({ difficulty: "EASY" }),
+      makeQ({ difficulty: "MEDIUM" }),
+      makeQ(),
+    ]);
+    expect(summary.withDifficultyCount).toBe(2);
+  });
+
+  test("keeps classification across revalidation edits", () => {
+    const q = makeQ({ classification: { topic: "T", confidence: 0.5 } });
+    const [after] = revalidateQuestions([{ ...q, correctAnswer: "A" }]);
+    expect(after.classification).toEqual({ topic: "T", confidence: 0.5 });
+  });
+});
+
 import * as XLSX from "xlsx";
-import { parseXlsx } from "./import-parser";
+import { parseXlsx, parseJson } from "./import-parser";
 
 describe("parseXlsx", () => {
   const createMockFile = (wb: XLSX.WorkBook, name: string): File => {
@@ -612,5 +746,118 @@ describe("parseXlsx", () => {
     await expect(parseXlsx(file)).rejects.toThrow(
       "Unable to read this XLSX file. The file may be corrupted or in an unsupported format."
     );
+  });
+
+  test("leaves XLSX-derived questions without classification and difficulty untouched", async () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["Year", "Subject", "Question", "A", "B", "C", "D", "Answer"],
+      [2020, "Biology", "What is 2+2?", "3", "4", "5", "6", "B"],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+    const file = createMockFile(wb, "test.xlsx");
+    const result = await parseXlsx(file);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].classification).toBeUndefined();
+    expect(result.summary.withClassificationCount).toBe(0);
+  });
+});
+
+describe("parseJson", () => {
+  const makeJsonFile = (content: unknown): File =>
+    ({
+      name: "questions.json",
+      text: async () => JSON.stringify(content),
+    }) as unknown as File;
+
+  test("parses a Kilo-enriched question with classification and difficulty", async () => {
+    const file = makeJsonFile({
+      questions: [
+        {
+          year: 2005,
+          subject: "CHEMISTRY",
+          text: "Which gas is produced by the gasification of coke?",
+          options: { A: "Oxygen", B: "Hydrogen", C: "Nitrogen", D: "Chlorine" },
+          answer: "B",
+          difficulty: "medium",
+          classification: {
+            topic: "Coke: Gasification and uses",
+            confidence: 0.95,
+          },
+        },
+      ],
+    });
+
+    const result = await parseJson(file);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].status).toBe("valid");
+    expect(result.questions[0].classification).toEqual({
+      topic: "Coke: Gasification and uses",
+      confidence: 0.95,
+    });
+    expect(result.questions[0].difficulty).toBe("MEDIUM");
+    expect(result.summary.withClassificationCount).toBe(1);
+  });
+
+  test("still accepts JSON without classification (backward compatible)", async () => {
+    const file = makeJsonFile([
+      {
+        year: 2004,
+        subject: "CHEMISTRY",
+        text: "What is 2+2?",
+        options: ["3", "4", "5", "6"],
+        answer: "B",
+      },
+    ]);
+
+    const result = await parseJson(file);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].status).toBe("valid");
+    expect(result.questions[0].classification).toBeNull();
+    expect(result.summary.withClassificationCount).toBe(0);
+  });
+
+  test("demotes malformed classification to a warning without rejecting the row", async () => {
+    const file = makeJsonFile([
+      {
+        year: 2004,
+        subject: "CHEMISTRY",
+        text: "What is 2+2?",
+        options: ["3", "4", "5", "6"],
+        answer: "B",
+        classification: { topic: "Atomic Structure", confidence: 4.2 },
+      },
+    ]);
+
+    const result = await parseJson(file);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].status).toBe("warning");
+    expect(result.questions[0].statusReason).toContain("confidence");
+    expect(result.questions[0].classification).toBeNull();
+  });
+
+  test("normalizes invalid difficulty to a warning without rejecting the row", async () => {
+    const file = makeJsonFile([
+      {
+        year: 2004,
+        subject: "CHEMISTRY",
+        text: "What is 2+2?",
+        options: ["3", "4", "5", "6"],
+        answer: "B",
+        difficulty: "impossible",
+      },
+    ]);
+
+    const result = await parseJson(file);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].status).toBe("warning");
+    expect(result.questions[0].statusReason).toContain("Unknown difficulty");
+    expect(result.questions[0].difficulty).toBeNull();
   });
 });

@@ -377,6 +377,21 @@ export function SubmittedSection({
           {result.duplicates} duplicate{result.duplicates === 1 ? "" : "s"} ·{" "}
           {result.unsupported} unsupported · {result.failed} failed
         </p>
+        {result.classificationsResolved > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {result.classificationsResolved} imported topic classification
+            {result.classificationsResolved === 1 ? "" : "s"} recorded as
+            suggestions.
+          </p>
+        )}
+        {result.classificationsUnresolved > 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            {result.classificationsUnresolved} imported classification
+            {result.classificationsUnresolved === 1 ? "" : "s"} could not be
+            resolved to a syllabus concept — these questions are marked for
+            review and can be classified later.
+          </p>
+        )}
       </div>
       <div className="flex gap-3">
         <Button onClick={onReset} variant="outline">

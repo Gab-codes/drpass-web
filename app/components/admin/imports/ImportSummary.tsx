@@ -47,6 +47,16 @@ export function ImportSummary({ summary, filename }: ImportSummaryProps) {
       value: summary.validCount,
       emphasis: "default",
     },
+    ...(summary.withClassificationCount > 0
+      ? [
+          {
+            icon: Icons.BookOpen01Icon as HugeIcon,
+            label: "With topic classification",
+            value: summary.withClassificationCount,
+            emphasis: "info" as const,
+          },
+        ]
+      : []),
     ...(summary.duplicateCount > 0
       ? [
           {
