@@ -28,7 +28,11 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createQuestion, updateQuestion, questionKeys } from "@/api/questions";
+import {
+  createQuestion,
+  updateQuestion,
+  questionKeys,
+} from "@/api/admin-questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
   QuestionFieldsForm,
@@ -49,14 +53,20 @@ export function adminQuestionToFormValues(
     year: q.year,
     subject: q.subject,
     text: q.text,
-    type: q.questionType && q.questionType !== "UNKNOWN" ? q.questionType : "SINGLE_CHOICE",
+    type:
+      q.questionType && q.questionType !== "UNKNOWN"
+        ? q.questionType
+        : "SINGLE_CHOICE",
     options: [
       { key: "A", text: optionText("A") },
       { key: "B", text: optionText("B") },
       { key: "C", text: optionText("C") },
       { key: "D", text: optionText("D") },
     ],
-    correctAnswer: typeof q.correctAnswer === "number" ? String(q.correctAnswer) : q.correctAnswer,
+    correctAnswer:
+      typeof q.correctAnswer === "number"
+        ? String(q.correctAnswer)
+        : q.correctAnswer,
     difficulty: q.difficulty,
     source: q.source || null,
     explanation: q.explanation,
@@ -69,7 +79,9 @@ function formValuesToAdminInput(v: QuestionFormValues) {
   // Map back to the canonical API shape (options as a { key, text } array).
   // Only choice types carry options; other types submit null.
   const isChoiceType =
-    v.type === "SINGLE_CHOICE" || v.type === "MULTIPLE_CHOICE" || v.type === "TRUE_FALSE";
+    v.type === "SINGLE_CHOICE" ||
+    v.type === "MULTIPLE_CHOICE" ||
+    v.type === "TRUE_FALSE";
   const options = isChoiceType
     ? v.options.filter((o) => o.text.trim() !== "")
     : null;

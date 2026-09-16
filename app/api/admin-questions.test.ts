@@ -9,7 +9,7 @@ import {
   importQuestions,
   rejectQuestion,
   updateQuestion,
-} from "@/api/questions";
+} from "@/api/admin-questions";
 import { apiClient } from "@/lib/axios";
 import type { AdminQuestion, ImportQuestionsResult } from "@/types/questions";
 

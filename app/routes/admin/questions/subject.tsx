@@ -20,7 +20,7 @@ import {
   approveAllPendingInSubject,
   deleteQuestion,
   bulkDeleteQuestions,
-} from "@/api/questions";
+} from "@/api/admin-questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -73,8 +73,11 @@ export default function SubjectQuestions() {
   );
   const [approveAllOpen, setApproveAllOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
-  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
-  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(
+    null,
+  );
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] =
+    React.useState(false);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] =
@@ -410,13 +413,18 @@ export default function SubjectQuestions() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this question?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Are you sure you want to delete this question?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected question and its associated classification data will be permanently removed.
+              This action cannot be undone. The selected question and its
+              associated classification data will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel / Keep</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel / Keep
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -431,16 +439,25 @@ export default function SubjectQuestions() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+      <AlertDialog
+        open={bulkDeleteConfirmOpen}
+        onOpenChange={setBulkDeleteConfirmOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete these questions?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Are you sure you want to delete these questions?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The {selectedIds.size} selected questions and their associated classification data will be permanently removed.
+              This action cannot be undone. The {selectedIds.size} selected
+              questions and their associated classification data will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel / Keep</AlertDialogCancel>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>
+              Cancel / Keep
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();

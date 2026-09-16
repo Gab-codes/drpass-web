@@ -15,13 +15,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import TopicClassificationHistory from "./history";
 import { listClassificationSubjects } from "@/api/ai-classification";
-import { getAdminSubjects } from "@/api/questions";
+import { getAdminSubjects } from "@/api/admin-questions";
 import type { ClassificationSubjectSummary } from "@/types/questions";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("@/api/questions", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/api/questions")>();
+  const actual = await importOriginal<typeof import("@/api/admin-questions")>();
   return {
     ...actual,
     getAdminSubjects: vi.fn(),
@@ -73,7 +73,9 @@ function renderHistory() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/admin/questions/classification/history"]}>
+      <MemoryRouter
+        initialEntries={["/admin/questions/classification/history"]}
+      >
         <Routes>
           <Route
             path="/admin/questions/classification/history"
@@ -137,7 +139,13 @@ describe("TopicClassificationHistory (subjects) — rendering", () => {
 
   it("lists subjects that have no classification history yet", async () => {
     vi.mocked(getAdminSubjects).mockResolvedValue([
-      { subject: "Mathematics", total: 12, pending: 0, approved: 12, rejected: 0 },
+      {
+        subject: "Mathematics",
+        total: 12,
+        pending: 0,
+        approved: 12,
+        rejected: 0,
+      },
     ]);
     vi.mocked(listClassificationSubjects).mockResolvedValue([]);
 
@@ -152,12 +160,16 @@ describe("TopicClassificationHistory (subjects) — rendering", () => {
   });
 
   it("does not claim a subject is empty while its summary is still loading", async () => {
-    vi.mocked(listClassificationSubjects).mockReturnValue(new Promise(() => {}));
+    vi.mocked(listClassificationSubjects).mockReturnValue(
+      new Promise(() => {}),
+    );
 
     renderHistory();
 
     expect(await screen.findByText("Chemistry")).toBeInTheDocument();
-    expect(screen.queryByText("No classifications yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No classifications yet"),
+    ).not.toBeInTheDocument();
   });
 
   it("groups jobs recorded without a subject as custom selections", async () => {
@@ -210,7 +222,9 @@ describe("TopicClassificationHistory (subjects) — navigation", () => {
 describe("TopicClassificationHistory (subjects) — states", () => {
   it("shows a loading state while the subjects are being fetched", () => {
     vi.mocked(getAdminSubjects).mockReturnValue(new Promise(() => {}));
-    vi.mocked(listClassificationSubjects).mockReturnValue(new Promise(() => {}));
+    vi.mocked(listClassificationSubjects).mockReturnValue(
+      new Promise(() => {}),
+    );
 
     renderHistory();
 

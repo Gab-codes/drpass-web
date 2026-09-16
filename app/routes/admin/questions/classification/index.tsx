@@ -38,7 +38,7 @@ import {
   getAdminQuestionIds,
   getAdminSubjects,
   questionKeys,
-} from "@/api/questions";
+} from "@/api/admin-questions";
 import { QuestionFilters } from "@/components/admin/questions/QuestionFilters";
 import { QuestionSelectionList } from "@/components/admin/classification/QuestionSelectionList";
 import { useQuestionSelection } from "@/hooks/use-question-selection";
@@ -170,7 +170,10 @@ export default function TopicClassificationSetup() {
       {/* ── Subject Select ──────────────────────────────────────────── */}
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="classification-subject" className="text-sm font-medium">
+          <Label
+            htmlFor="classification-subject"
+            className="text-sm font-medium"
+          >
             Subject
           </Label>
           <p className="text-xs text-muted-foreground">
@@ -233,7 +236,10 @@ export default function TopicClassificationSetup() {
             className="mt-0.5"
           />
           <div>
-            <Label htmlFor="force-reclassify" className="text-sm font-medium cursor-pointer">
+            <Label
+              htmlFor="force-reclassify"
+              className="text-sm font-medium cursor-pointer"
+            >
               Re-classify already classified questions
             </Label>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -305,7 +311,10 @@ export default function TopicClassificationSetup() {
         {createJob.isError && (
           <Alert variant="destructive" className="text-sm">
             <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
-            {getApiErrorMessage(createJob.error, "Failed to start classification job")}
+            {getApiErrorMessage(
+              createJob.error,
+              "Failed to start classification job",
+            )}
           </Alert>
         )}
 
