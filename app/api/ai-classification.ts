@@ -12,6 +12,9 @@ import type {
   AiJobExceptionsResult,
   AcceptClassificationResult,
   ExceptionQuery,
+  ClassificationJobsQuery,
+  ClassificationJobsResult,
+  ClassificationSubjectSummary,
 } from "@/types/questions";
 
 const BASE = "/ai-classification";
@@ -25,6 +28,9 @@ export const aiClassificationKeys = {
     [...aiClassificationKeys.all, "results", id] as const,
   exceptions: (id: string, query: ExceptionQuery) =>
     [...aiClassificationKeys.all, "exceptions", id, query] as const,
+  jobs: (query: ClassificationJobsQuery) =>
+    [...aiClassificationKeys.all, "jobs", query] as const,
+  subjects: () => [...aiClassificationKeys.all, "subjects"] as const,
 };
 
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
@@ -33,6 +39,35 @@ export interface CreateClassificationJobInput {
   subject?: string;
   questionIds?: string[];
   force?: boolean;
+}
+
+/**
+ * Paginated Topic Classification history. `ai_classification_jobs` is the
+ * history; this only reads it. Each item carries the persisted job counters
+ * plus the per-job suggestion aggregates.
+ */
+export async function listClassificationJobs(
+  query: ClassificationJobsQuery = {},
+): Promise<ClassificationJobsResult> {
+  const { data } = await apiClient.get<ClassificationJobsResult>(
+    `${BASE}/jobs`,
+    { params: query },
+  );
+  return data;
+}
+
+/**
+ * Subjects with their classification-history summary — the landing level of
+ * the subject-first history. Same source of truth as `listClassificationJobs`
+ * (`ai_classification_jobs`), aggregated on read.
+ */
+export async function listClassificationSubjects(): Promise<
+  ClassificationSubjectSummary[]
+> {
+  const { data } = await apiClient.get<ClassificationSubjectSummary[]>(
+    `${BASE}/subjects`,
+  );
+  return data;
 }
 
 export async function createClassificationJob(

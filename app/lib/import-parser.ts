@@ -283,14 +283,20 @@ export function isInstructionRow(
   return !q.correctAnswer && nonEmptyOptions.length === 0;
 }
 
-export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">): {
+export function detectStatus(
+  q: Omit<ParsedQuestion, "status" | "statusReason">,
+): {
   status: ParsedQuestion["status"];
   statusReason?: string;
 } {
   if (!q.text || q.text.trim() === "") {
     return { status: "error", statusReason: "Missing question text" };
   }
-  if (q.correctAnswer === null || q.correctAnswer === undefined || q.correctAnswer === "") {
+  if (
+    q.correctAnswer === null ||
+    q.correctAnswer === undefined ||
+    q.correctAnswer === ""
+  ) {
     return {
       status: "error",
       statusReason: "Missing or invalid correct answer",
@@ -302,15 +308,15 @@ export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">)
   if (!q.subject) {
     return { status: "error", statusReason: "Missing subject" };
   }
-  if (q.type === 'UNKNOWN') {
+  if (q.type === "UNKNOWN") {
     return {
       status: "warning",
       statusReason: "Question type could not be determined. Please resolve.",
     };
   }
-  
+
   const nonEmptyOptions = q.options.filter((o) => o.text.trim() !== "");
-  if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE') {
+  if (q.type === "SINGLE_CHOICE" || q.type === "MULTIPLE_CHOICE") {
     if (nonEmptyOptions.length < 2) {
       return { status: "error", statusReason: "Fewer than 2 answer options" };
     }
@@ -332,8 +338,8 @@ export function detectStatus(q: Omit<ParsedQuestion, "status" | "statusReason">)
   return { status: "valid" };
 }
 
-const KNOWN_SOURCES = ['JAMB', 'WAEC', 'NECO', 'GCE'] as const;
-type KnownSource = typeof KNOWN_SOURCES[number];
+const KNOWN_SOURCES = ["JAMB", "WAEC", "NECO", "GCE"] as const;
+type KnownSource = (typeof KNOWN_SOURCES)[number];
 
 /**
  * Detect a source from a single text string (sheet name or filename stem).
@@ -359,29 +365,29 @@ export function detectSourceFromText(text: string): KnownSource | null {
  * Never defaults to JAMB or any other source.
  */
 export function detectSourceFromWorkbook(
-  wb: import('xlsx').WorkBook,
+  wb: import("xlsx").WorkBook,
   filename: string,
 ): KnownSource | null {
   // Tier 1: workbook built-in properties (if the spreadsheet author filled them in)
   const props = wb.Props as any;
   if (props) {
     const propsText = [
-      props.Title ?? '',
-      props.Subject ?? '',
-      props.Keywords ?? '',
-      props.Description ?? '',
-    ].join(' ');
+      props.Title ?? "",
+      props.Subject ?? "",
+      props.Keywords ?? "",
+      props.Description ?? "",
+    ].join(" ");
     const fromProps = detectSourceFromText(propsText);
     if (fromProps !== null) return fromProps;
   }
 
   // Tier 2: all sheet names combined
-  const sheetText = (wb.SheetNames ?? []).join(' ');
+  const sheetText = (wb.SheetNames ?? []).join(" ");
   const fromSheets = detectSourceFromText(sheetText);
   if (fromSheets !== null) return fromSheets;
 
   // Tier 3: filename stem (strip extension)
-  const stem = filename.replace(/\.[^.]+$/, '');
+  const stem = filename.replace(/\.[^.]+$/, "");
   return detectSourceFromText(stem);
 }
 
@@ -389,52 +395,62 @@ export function detectSourceFromWorkbook(
  * @deprecated Use detectSourceFromWorkbook for full workbook inspection.
  * Kept for the per-sheet path in the existing structured parser.
  */
-export function detectSource(sheetName: string, filenameHint?: string): KnownSource | null {
+export function detectSource(
+  sheetName: string,
+  filenameHint?: string,
+): KnownSource | null {
   // Try sheet name first, then fall back to filename
   const fromSheet = detectSourceFromText(sheetName);
   if (fromSheet !== null) return fromSheet;
   if (filenameHint) {
-    const stem = filenameHint.replace(/\.[^.]+$/, '');
+    const stem = filenameHint.replace(/\.[^.]+$/, "");
     return detectSourceFromText(stem);
   }
   return null;
 }
 
-export function detectQuestionType(options: { key: string; text: string }[], correctAnswer: any): string {
-  const validOptions = options.filter(o => o.text.trim() !== '');
-  
+export function detectQuestionType(
+  options: { key: string; text: string }[],
+  correctAnswer: any,
+): string {
+  const validOptions = options.filter((o) => o.text.trim() !== "");
+
   if (Array.isArray(correctAnswer) && correctAnswer.length > 1) {
-    return 'MULTIPLE_CHOICE';
+    return "MULTIPLE_CHOICE";
   }
-  
+
   if (validOptions.length === 0) {
-    if (typeof correctAnswer === 'number' || !isNaN(Number(correctAnswer))) {
-      return 'NUMERIC';
+    if (typeof correctAnswer === "number" || !isNaN(Number(correctAnswer))) {
+      return "NUMERIC";
     }
-    if (typeof correctAnswer === 'string' && correctAnswer.trim() !== '') {
-      return 'SHORT_ANSWER';
+    if (typeof correctAnswer === "string" && correctAnswer.trim() !== "") {
+      return "SHORT_ANSWER";
     }
   }
-  
+
   if (validOptions.length >= 3) {
-    return 'SINGLE_CHOICE';
+    return "SINGLE_CHOICE";
   }
-  
+
   if (validOptions.length === 2) {
-    const keys = validOptions.map(o => o.key.toUpperCase());
-    const texts = validOptions.map(o => o.text.toUpperCase());
-    if ((keys.includes('T') && keys.includes('F')) || (texts.includes('TRUE') && texts.includes('FALSE'))) {
-      return 'TRUE_FALSE';
+    const keys = validOptions.map((o) => o.key.toUpperCase());
+    const texts = validOptions.map((o) => o.text.toUpperCase());
+    if (
+      (keys.includes("T") && keys.includes("F")) ||
+      (texts.includes("TRUE") && texts.includes("FALSE"))
+    ) {
+      return "TRUE_FALSE";
     }
     // Two options that are not clearly True/False are ambiguous — require admin resolution
-    return 'UNKNOWN';
+    return "UNKNOWN";
   }
-  
-  return 'UNKNOWN';
+
+  return "UNKNOWN";
 }
 
-
-export function detectDuplicates(questions: ParsedQuestion[]): ParsedQuestion[] {
+export function detectDuplicates(
+  questions: ParsedQuestion[],
+): ParsedQuestion[] {
   const seen = new Map<string, string>();
 
   return questions.map((q) => {
@@ -680,17 +696,31 @@ export function normalizeOptions(rawOptions: Record<AnswerOption, string>) {
 
 // ── XLSX ─────────────────────────────────────────────────────────────────────
 
-export async function parseXlsx(
-  file: File,
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
+export async function parseXlsx(file: File): Promise<{
+  questions: ParsedQuestion[];
+  summary: ParseSummary;
+  detectedSource: string | null;
+}> {
   const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  // XLSX files are ZIP archives and always begin with the "PK" magic bytes
+  // (0x50, 0x4B). Reject obviously non-XLSX / corrupt input early with a clear
+  // message rather than letting SheetJS leniently fabricate an empty workbook
+  // from arbitrary bytes (e.g. a file of null bytes parses into a single junk
+  // sheet, bypassing the empty-SheetNames guard below).
+  if (bytes.length < 2 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+    throw new Error(
+      "Unable to read this XLSX file. The file may be corrupted or in an unsupported format.",
+    );
+  }
 
   // SheetJS 0.18.x: `type: "array"` requires a Uint8Array, not a bare ArrayBuffer.
   // `file.arrayBuffer()` returns a raw ArrayBuffer, so it must be wrapped.
   // Do NOT pass `bookProps: true` — in 0.18.x that flag makes XLSX.read return
   // only { Props, Custprops } instead of a full workbook, causing SheetNames to
   // be undefined. A normal read already includes wb.Props.
-  const wb = XLSX.read(new Uint8Array(buffer));
+  const wb = XLSX.read(bytes);
 
   if (!Array.isArray(wb.SheetNames) || wb.SheetNames.length === 0) {
     throw new Error(
@@ -776,7 +806,7 @@ export async function parseXlsx(
           { key: "D", text: normOptions.D },
         ];
         const rawAns = String(record.correctAnswer ?? record.answer ?? "");
-        
+
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
           rowIndex: i + 1,
@@ -906,9 +936,11 @@ export async function parseXlsx(
 
 // ── JSON ──────────────────────────────────────────────────────────────────────
 
-export async function parseJson(
-  file: File,
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
+export async function parseJson(file: File): Promise<{
+  questions: ParsedQuestion[];
+  summary: ParseSummary;
+  detectedSource: string | null;
+}> {
   const text = await file.text();
   let data: unknown;
   try {
@@ -1024,7 +1056,11 @@ export function buildSummary(
 export async function parseFile(
   file: File,
   format: "xlsx" | "json",
-): Promise<{ questions: ParsedQuestion[]; summary: ParseSummary; detectedSource: string | null }> {
+): Promise<{
+  questions: ParsedQuestion[];
+  summary: ParseSummary;
+  detectedSource: string | null;
+}> {
   if (format === "xlsx") return parseXlsx(file);
   return parseJson(file);
 }

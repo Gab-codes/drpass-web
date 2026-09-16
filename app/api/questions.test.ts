@@ -26,17 +26,24 @@ const mockedApiClient = vi.mocked(apiClient);
 const question: AdminQuestion = {
   id: "question-1",
   importId: null,
+  source: "JAMB",
   subject: "Chemistry",
   year: 2020,
   text: "What is water?",
   textHash: "hash",
-  optionA: "H2O",
-  optionB: "CO2",
-  optionC: "NaCl",
-  optionD: "O2",
+  options: [
+    { key: "A", text: "H2O" },
+    { key: "B", text: "CO2" },
+    { key: "C", text: "NaCl" },
+    { key: "D", text: "O2" },
+  ],
   correctAnswer: "A",
+  questionType: "SINGLE_CHOICE",
+  difficulty: null,
+  explanation: null,
   status: "pending",
   isActive: false,
+  classificationConfidence: null,
   createdBy: "admin-1",
   updatedBy: null,
   reviewedBy: null,
@@ -56,10 +63,9 @@ describe("question API", () => {
       getAdminQuestions({ status: "approved", isActive: true }),
     ).resolves.toEqual([question]);
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith(
-      "/api/v1/questions/admin",
-      { params: { status: "approved", isActive: true } },
-    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith("/questions/admin", {
+      params: { status: "approved", isActive: true },
+    });
   });
 
   it("creates a manual question without backend-owned fields", async () => {
@@ -69,16 +75,20 @@ describe("question API", () => {
       year: 2020,
       subject: "Chemistry",
       text: "What is water?",
-      optionA: "H2O",
-      optionB: "CO2",
-      optionC: "NaCl",
-      optionD: "O2",
+      source: "JAMB",
+      questionType: "SINGLE_CHOICE",
+      options: [
+        { key: "A", text: "H2O" },
+        { key: "B", text: "CO2" },
+        { key: "C", text: "NaCl" },
+        { key: "D", text: "O2" },
+      ],
       correctAnswer: "A" as const,
     };
 
     await expect(createQuestion(input)).resolves.toEqual(question);
     expect(mockedApiClient.post).toHaveBeenCalledWith(
-      "/api/v1/questions/admin",
+      "/questions/admin",
       input,
     );
   });
@@ -135,7 +145,7 @@ describe("question API", () => {
 
     await expect(importQuestions({ questions: [] })).resolves.toEqual(result);
     expect(mockedApiClient.post).toHaveBeenCalledWith(
-      "/api/v1/questions/admin/import",
+      "/questions/admin/import",
       { questions: [] },
     );
   });
@@ -150,7 +160,7 @@ describe("question API", () => {
     ).resolves.toMatchObject({ text: "Updated text" });
 
     expect(mockedApiClient.patch).toHaveBeenCalledWith(
-      "/api/v1/questions/admin/question-1",
+      "/questions/admin/question-1",
       { text: "Updated text" },
     );
   });
@@ -165,19 +175,19 @@ describe("question API", () => {
 
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       1,
-      "/api/v1/questions/admin/question-1/approve",
+      "/questions/admin/question-1/approve",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       2,
-      "/api/v1/questions/admin/question-1/reject",
+      "/questions/admin/question-1/reject",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       3,
-      "/api/v1/questions/admin/question-1/activate",
+      "/questions/admin/question-1/activate",
     );
     expect(mockedApiClient.post).toHaveBeenNthCalledWith(
       4,
-      "/api/v1/questions/admin/question-1/deactivate",
+      "/questions/admin/question-1/deactivate",
     );
   });
 });

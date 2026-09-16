@@ -1,4 +1,4 @@
-import type { AnswerOption, ParsedQuestion } from "@/types/import-types";
+import type { ParsedQuestion } from "@/types/import-types";
 
 export type AdminQuestionStatus = "pending" | "approved" | "rejected";
 
@@ -25,17 +25,19 @@ export interface ClassificationSummary {
 export interface AdminQuestion {
   id: string;
   importId: string | null;
+  source: string;
   subject: string;
-  year: number;
+  year: number | null;
   text: string;
   textHash: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: AnswerOption;
+  options: QuestionOptionPair[] | null;
+  correctAnswer: string | number | string[];
+  questionType: string;
+  difficulty: string | null;
+  explanation: string | null;
   status: AdminQuestionStatus;
   isActive: boolean;
+  classificationConfidence: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   reviewedBy: string | null;
@@ -44,15 +46,22 @@ export interface AdminQuestion {
   classification?: ClassificationSummary | null;
 }
 
+/** Backend option shape: { key, text } */
+export interface QuestionOptionPair {
+  key: string;
+  text: string;
+}
+
 export interface AdminQuestionInput {
   year: number;
   subject: string;
   text: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: AnswerOption;
+  source: string;
+  questionType: string;
+  options: QuestionOptionPair[] | null;
+  correctAnswer: string | number | string[];
+  difficulty?: string | null;
+  explanation?: string | null;
 }
 
 export type AdminQuestionUpdateInput = Partial<AdminQuestionInput>;
@@ -194,4 +203,61 @@ export interface ExceptionQuery {
   /** Confidence range (0..1), optional backend filtering. */
   minConfidence?: number;
   maxConfidence?: number;
+}
+
+// ─── Topic Classification History ─────────────────────────────────────────────
+
+export interface ClassificationJobsQuery {
+  subject?: string;
+  status?: AiJobStatus;
+  /** Only jobs recorded without a subject (targeted selections). */
+  unassigned?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * One history row: the persisted job state plus the per-job suggestion
+ * aggregates (suggested / accepted / needs review) computed by the backend.
+ */
+export interface ClassificationJobSummary {
+  id: string;
+  subject: string | null;
+  status: AiJobStatus;
+  total: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  /** Suggestions still awaiting review (ai_classified). */
+  suggested: number;
+  /** Suggestions accepted into canonical classifications (admin_verified). */
+  accepted: number;
+  needsReview: number;
+  model: string | null;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface ClassificationJobsResult {
+  items: ClassificationJobSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * One subject's classification-history summary — the landing level of the
+ * subject-first history. Derived on read from the job history, never stored.
+ * `subject` is null for the "custom selections" group (jobs recorded without
+ * a subject). Dates arrive as ISO strings over HTTP.
+ */
+export interface ClassificationSubjectSummary {
+  subject: string | null;
+  jobCount: number;
+  totalQuestions: number;
+  latestJobAt: string | null;
+  latestStatus: AiJobStatus | null;
 }
