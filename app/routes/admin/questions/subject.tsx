@@ -18,6 +18,8 @@ import {
   rejectQuestion,
   getAdminSubjects,
   approveAllPendingInSubject,
+  deleteQuestion,
+  bulkDeleteQuestions,
 } from "@/api/questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   QuestionDialog,
   type QuestionDialogMode,
@@ -60,6 +72,9 @@ export default function SubjectQuestions() {
     null,
   );
   const [approveAllOpen, setApproveAllOpen] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] =
@@ -140,6 +155,21 @@ export default function SubjectQuestions() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteQuestion(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteQuestions({ questionIds: ids }),
+    onSuccess: () => {
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: questionKeys.admin() });
+    },
+  });
+
   const approveAllMutation = useMutation({
     mutationFn: (sub: string) => approveAllPendingInSubject(sub),
     onSuccess: () => {
@@ -172,8 +202,14 @@ export default function SubjectQuestions() {
 
   const handleAction = (
     id: string,
-    action: "approve" | "reject" | "activate" | "deactivate",
+    action: "approve" | "reject" | "activate" | "deactivate" | "delete",
   ) => {
+    if (action === "delete") {
+      setDeleteTargetId(id);
+      setDeleteConfirmOpen(true);
+      return;
+    }
+
     setPendingActionId(id);
 
     const messages = {
@@ -208,8 +244,13 @@ export default function SubjectQuestions() {
   };
 
   const handleBulk = (
-    action: "approve" | "reject" | "activate" | "deactivate",
+    action: "approve" | "reject" | "activate" | "deactivate" | "delete",
   ) => {
+    if (action === "delete") {
+      setBulkDeleteConfirmOpen(true);
+      return;
+    }
+
     const messages = {
       approve: {
         loading: `Approving ${selectedIds.size} questions...`,
@@ -248,6 +289,31 @@ export default function SubjectQuestions() {
       error: (err) =>
         getApiErrorMessage(err, "Failed to approve pending questions"),
       finally: () => setApproveAllOpen(false),
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTargetId) return;
+    setPendingActionId(deleteTargetId);
+    toast.promise(deleteMutation.mutateAsync(deleteTargetId), {
+      loading: "Deleting question...",
+      success: "Question permanently deleted",
+      error: (err) => getApiErrorMessage(err, "Failed to delete question"),
+      finally: () => {
+        setPendingActionId(null);
+        setDeleteConfirmOpen(false);
+        setDeleteTargetId(null);
+      },
+    });
+  };
+
+  const handleConfirmBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    toast.promise(bulkDeleteMutation.mutateAsync(ids), {
+      loading: `Deleting ${ids.length} questions...`,
+      success: (data) => `${data.deletedCount} questions permanently deleted`,
+      error: (err) => getApiErrorMessage(err, "Failed to delete questions"),
+      finally: () => setBulkDeleteConfirmOpen(false),
     });
   };
 
@@ -340,6 +406,54 @@ export default function SubjectQuestions() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
       />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this question?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected question and its associated classification data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel / Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete these questions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The {selectedIds.size} selected questions and their associated classification data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel / Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmBulkDelete();
+              }}
+              disabled={bulkDeleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Separator className="my-2" />
 

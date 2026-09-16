@@ -135,6 +135,21 @@ export async function deactivateQuestion(id: string) {
   return response.data;
 }
 
+export async function deleteQuestion(id: string) {
+  const response = await apiClient.delete<{ deletedId: string }>(
+    `${ADMIN_QUESTIONS_PATH}/${id}`,
+  );
+  return response.data;
+}
+
+export async function bulkDeleteQuestions(input: { questionIds: string[] }) {
+  const response = await apiClient.post<{ deletedCount: number }>(
+    `${ADMIN_QUESTIONS_PATH}/bulk-delete`,
+    input,
+  );
+  return response.data;
+}
+
 export async function approveAllPendingInSubject(subject: string) {
   const response = await apiClient.post<ApproveAllPendingResult>(
     `${ADMIN_QUESTIONS_PATH}/approve-all-pending`,
