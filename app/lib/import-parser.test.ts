@@ -14,6 +14,7 @@ import {
   extractQuestionNumber,
   parseClassification,
   parseDifficulty,
+  normalizeKnownSource,
 } from "./import-parser";
 import type { ParsedQuestion } from "@/types/import-types";
 
@@ -859,5 +860,85 @@ describe("parseJson", () => {
     expect(result.questions[0].status).toBe("warning");
     expect(result.questions[0].statusReason).toContain("Unknown difficulty");
     expect(result.questions[0].difficulty).toBeNull();
+  });
+});
+
+describe("normalizeKnownSource", () => {
+  test("recognizes AI_GENERATED (case-insensitive, trimmed, canonicalized)", () => {
+    expect(normalizeKnownSource("AI_GENERATED")).toBe("AI_GENERATED");
+    expect(normalizeKnownSource("ai_generated")).toBe("AI_GENERATED");
+    expect(normalizeKnownSource("  ai_generated  ")).toBe("AI_GENERATED");
+  });
+
+  test("recognizes the exam-board sources the same way", () => {
+    expect(normalizeKnownSource("jamb")).toBe("JAMB");
+    expect(normalizeKnownSource(" waec ")).toBe("WAEC");
+    expect(normalizeKnownSource("Neco")).toBe("NECO");
+    expect(normalizeKnownSource("gce")).toBe("GCE");
+  });
+
+  test("returns null for unrecognized, missing, or non-string values", () => {
+    expect(normalizeKnownSource("STUFF")).toBe(null);
+    expect(normalizeKnownSource("")).toBe(null);
+    expect(normalizeKnownSource(null)).toBe(null);
+    expect(normalizeKnownSource(undefined)).toBe(null);
+  });
+});
+
+describe("parseJson row-level source", () => {
+  const makeJsonFile = (
+    content: unknown,
+    name = "questions.json",
+  ): File =>
+    ({
+      name,
+      text: async () => JSON.stringify(content),
+    }) as unknown as File;
+
+  const makeRow = (overrides: Record<string, unknown> = {}) => ({
+    year: 2026,
+    subject: "CHEMISTRY",
+    text: "What is the atomic number of carbon?",
+    options: { A: "6", B: "8", C: "12", D: "14" },
+    answer: "A",
+    ...overrides,
+  });
+
+  test("honors a row-level AI_GENERATED source (case-insensitive)", async () => {
+    const file = makeJsonFile([
+      makeRow({ source: "ai_generated" }),
+      makeRow({ text: "Another question", source: "AI_GENERATED" }),
+    ]);
+
+    const result = await parseJson(file);
+
+    expect(result.questions).toHaveLength(2);
+    expect(result.questions[0].source).toBe("AI_GENERATED");
+    expect(result.questions[1].source).toBe("AI_GENERATED");
+  });
+
+  test("falls back to filename detection when the row has no source", async () => {
+    const file = makeJsonFile([makeRow()], "jamb-2020.json");
+
+    const result = await parseJson(file);
+
+    expect(result.detectedSource).toBe("JAMB");
+    expect(result.questions[0].source).toBe("JAMB");
+  });
+
+  test("falls back (to null) when the row source is unrecognized and filename has no source", async () => {
+    const file = makeJsonFile([makeRow({ source: "STUFF" })]);
+
+    const result = await parseJson(file);
+
+    expect(result.questions[0].source).toBe(null);
+  });
+
+  test("falls back to filename detection when the row source is unrecognized but the filename is known", async () => {
+    const file = makeJsonFile([makeRow({ source: "STUFF" })], "waec.json");
+
+    const result = await parseJson(file);
+
+    expect(result.questions[0].source).toBe("WAEC");
   });
 });

@@ -4,7 +4,7 @@ export const questionFormSchema = z.object({
   year: z.number().int().min(1970).max(2100),
   subject: z.string().trim().min(1, "Subject is required"),
   text: z.string().trim().min(1, "Question text is required"),
-  source: z.enum(["JAMB", "WAEC", "NECO", "GCE"]),
+  source: z.enum(["JAMB", "WAEC", "NECO", "GCE", "AI_GENERATED"]),
   questionType: z.enum([
     "SINGLE_CHOICE",
     "MULTIPLE_CHOICE",

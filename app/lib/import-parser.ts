@@ -425,8 +425,26 @@ export function detectStatus(
   return { status: "valid" };
 }
 
-const KNOWN_SOURCES = ["JAMB", "WAEC", "NECO", "GCE"] as const;
+const KNOWN_SOURCES = ["JAMB", "WAEC", "NECO", "GCE", "AI_GENERATED"] as const;
 type KnownSource = (typeof KNOWN_SOURCES)[number];
+
+/**
+ * Normalize a raw source value to a canonical KNOWN_SOURCES entry.
+ * Case-insensitive, trims whitespace. Returns null when the value is not a
+ * recognized source — callers fall back to their own detection (or null).
+ */
+export function normalizeKnownSource(
+  raw: unknown,
+): KnownSource | null {
+  if (raw == null) return null;
+  const normalized = String(raw).trim().toUpperCase();
+  if (
+    (KNOWN_SOURCES as readonly string[]).includes(normalized)
+  ) {
+    return normalized as KnownSource;
+  }
+  return null;
+}
 
 /**
  * Detect a source from a single text string (sheet name or filename stem).
@@ -1100,6 +1118,12 @@ export async function parseJson(file: File): Promise<{
     const { classification, warning: classificationWarning } =
       parseClassification(row.classification);
 
+    // Row-level source wins when recognized (case-insensitive, trimmed,
+    // normalized to the canonical uppercase value). Otherwise fall back to
+    // the existing filename/sheet detection — a source is never invented.
+    const rowSource = normalizeKnownSource(row.source);
+    const resolvedSource = rowSource ?? detectSource("JSON", file.name);
+
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
       rowIndex: idx + 1,
@@ -1110,7 +1134,7 @@ export async function parseJson(file: File): Promise<{
       rawText,
       options: optionsArr,
       correctAnswer: rawAns,
-      source: detectSource("JSON", file.name),
+      source: resolvedSource,
       type: detectQuestionType(optionsArr, rawAns),
       difficulty,
       explanation: row.explanation ? String(row.explanation) : null,

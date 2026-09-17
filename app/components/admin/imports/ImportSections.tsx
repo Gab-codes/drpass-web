@@ -315,7 +315,7 @@ export function SubmissionFooter({
           )}
           {!importSource && (
             <p className="text-xs font-medium text-destructive">
-              No source selected. Choose JAMB, WAEC, NECO, or GCE before
+              No source selected. Choose {QUESTION_SOURCES.join(", ")} before
               importing.
             </p>
           )}
