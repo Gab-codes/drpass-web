@@ -12,7 +12,7 @@ import {
 } from "@/components/student/syllabus/syllabus-empty";
 import { Badge } from "@/components/ui/badge";
 
-const EXAM_KEY = "JAMB_UTME";
+const EXAM_KEY = "JAMB UTME";
 
 export default function SyllabusPage() {
   const {
