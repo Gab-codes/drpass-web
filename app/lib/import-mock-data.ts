@@ -354,6 +354,8 @@ export const MOCK_SUMMARY: ParseSummary = {
   errorCount: 2,
   duplicateCount: 2,
   contextRowCount: 0,
+  withClassificationCount: 0,
+  withDifficultyCount: 0,
 };
 
 export const MOCK_IMPORT_RECORDS: ImportRecord[] = [

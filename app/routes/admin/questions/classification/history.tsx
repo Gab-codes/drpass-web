@@ -15,7 +15,7 @@ import {
   aiClassificationKeys,
   listClassificationSubjects,
 } from "@/api/ai-classification";
-import { getAdminSubjects, questionKeys } from "@/api/questions";
+import { getAdminSubjects, questionKeys } from "@/api/admin-questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { ClassificationHistoryGroupCard } from "@/components/admin/classification/ClassificationHistoryGroupCard";
 import type { ClassificationSubjectSummary } from "@/types/questions";

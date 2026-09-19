@@ -181,6 +181,8 @@ export default function ShowImport() {
           errorCount: record.errorCount,
           duplicateCount: record.duplicateCount,
           contextRowCount: 0,
+          withClassificationCount: 0,
+          withDifficultyCount: 0,
         }}
       />
 

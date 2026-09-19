@@ -32,7 +32,7 @@ import {
   retryFailedClassification,
 } from "@/api/ai-classification";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { questionKeys } from "@/api/questions";
+import { questionKeys } from "@/api/admin-questions";
 import { JobPageHeader } from "@/components/admin/classification/JobPageHeader";
 import { ClassificationProgress } from "@/components/admin/classification/ClassificationProgress";
 import { ClassificationResults } from "@/components/admin/classification/ClassificationResults";

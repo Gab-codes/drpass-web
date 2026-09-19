@@ -84,6 +84,8 @@ export interface ImportQuestionsInput {
       | "status"
       | "statusReason"
       | "hasImage"
+      | "classification"
+
     >
   >;
 }
@@ -95,6 +97,10 @@ export interface ImportQuestionsResult {
   unsupported: number;
   failed: number;
   importId: string | null;
+  /** Imported classifications resolved to an active canonical concept. */
+  classificationsResolved: number;
+  /** Imported classifications that could not be resolved (need review). */
+  classificationsUnresolved: number;
 }
 
 export interface AdminQuestionFilters {

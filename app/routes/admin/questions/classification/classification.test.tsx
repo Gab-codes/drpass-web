@@ -16,7 +16,7 @@ import {
   getAdminQuestions,
   getAdminQuestionIds,
   getAdminSubjects,
-} from "@/api/questions";
+} from "@/api/admin-questions";
 import {
   createClassificationJob,
   getClassificationJob,
@@ -33,7 +33,7 @@ import type {
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("@/api/questions", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/api/questions")>();
+  const actual = await importOriginal<typeof import("@/api/admin-questions")>();
   return {
     ...actual,
     getAdminSubjects: vi.fn(),
@@ -47,7 +47,12 @@ vi.mock("@/api/ai-classification", () => ({
     all: ["ai-classification"],
     job: (id: string) => ["ai-classification", "job", id],
     results: (id: string) => ["ai-classification", "results", id],
-    exceptions: (id: string, query: object) => ["ai-classification", "exceptions", id, query],
+    exceptions: (id: string, query: object) => [
+      "ai-classification",
+      "exceptions",
+      id,
+      query,
+    ],
   },
   createClassificationJob: vi.fn(),
   getClassificationJob: vi.fn(),
@@ -61,7 +66,9 @@ vi.mock("@/api/ai-classification", () => ({
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const makeJob = (overrides: Partial<AiClassificationJob> = {}): AiClassificationJob => ({
+const makeJob = (
+  overrides: Partial<AiClassificationJob> = {},
+): AiClassificationJob => ({
   id: "job-1",
   subject: "Physics",
   total: 100,
@@ -76,7 +83,9 @@ const makeJob = (overrides: Partial<AiClassificationJob> = {}): AiClassification
   ...overrides,
 });
 
-const makeResults = (overrides: Partial<AiClassificationJobResults> = {}): AiClassificationJobResults => ({
+const makeResults = (
+  overrides: Partial<AiClassificationJobResults> = {},
+): AiClassificationJobResults => ({
   jobId: "job-1",
   status: "completed",
   total: 100,
@@ -150,11 +159,17 @@ function renderSetup() {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={["/admin/questions/classification"]}>
         <Routes>
-          <Route path="/admin/questions/classification" element={<TopicClassificationSetup />} />
-          <Route path="/admin/questions/classification/:jobId" element={<div>Job Page</div>} />
+          <Route
+            path="/admin/questions/classification"
+            element={<TopicClassificationSetup />}
+          />
+          <Route
+            path="/admin/questions/classification/:jobId"
+            element={<div>Job Page</div>}
+          />
         </Routes>
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -178,13 +193,21 @@ function renderJobPage(jobId = "job-1") {
   const qc = makeQueryClient();
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[`/admin/questions/classification/${jobId}`]}>
+      <MemoryRouter
+        initialEntries={[`/admin/questions/classification/${jobId}`]}
+      >
         <Routes>
-          <Route path="/admin/questions/classification/:jobId" element={<ClassificationJobPage />} />
-          <Route path="/admin/questions/classification" element={<div>Setup Page</div>} />
+          <Route
+            path="/admin/questions/classification/:jobId"
+            element={<ClassificationJobPage />}
+          />
+          <Route
+            path="/admin/questions/classification"
+            element={<div>Setup Page</div>}
+          />
         </Routes>
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -194,8 +217,20 @@ describe("TopicClassificationSetup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getAdminSubjects).mockResolvedValue([
-      { subject: "Physics", total: 100, pending: 10, approved: 80, rejected: 10 },
-      { subject: "Chemistry", total: 50, pending: 5, approved: 40, rejected: 5 },
+      {
+        subject: "Physics",
+        total: 100,
+        pending: 10,
+        approved: 80,
+        rejected: 10,
+      },
+      {
+        subject: "Chemistry",
+        total: 50,
+        pending: 5,
+        approved: 40,
+        rejected: 5,
+      },
     ]);
     vi.mocked(getAdminQuestions).mockResolvedValue(
       listResponse([makeQuestion()]),
@@ -212,14 +247,20 @@ describe("TopicClassificationSetup", () => {
     renderSetup();
     const select = await screen.findByRole("combobox");
     expect(select).toBeInTheDocument();
-    expect(await screen.findByRole("option", { name: /Physics/ })).toBeInTheDocument();
-    expect(await screen.findByRole("option", { name: /Chemistry/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: /Physics/ }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: /Chemistry/ }),
+    ).toBeInTheDocument();
   });
 
   it("shows subject stats when a subject is selected", async () => {
     renderSetup();
     await screen.findByRole("combobox");
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Physics" } });
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Physics" },
+    });
     expect(await screen.findByText("80")).toBeInTheDocument(); // approved count
   });
 
@@ -238,14 +279,18 @@ describe("TopicClassificationSetup", () => {
   });
 
   it("creates the job with the explicitly selected question ids", async () => {
-    vi.mocked(createClassificationJob).mockResolvedValue(makeJob({ id: "new-job" }));
+    vi.mocked(createClassificationJob).mockResolvedValue(
+      makeJob({ id: "new-job" }),
+    );
     renderSetup();
     await selectSubject();
 
     fireEvent.click(
       await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Classify 1 Question" }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Start Classification" }),
     );
@@ -268,7 +313,9 @@ describe("TopicClassificationSetup", () => {
     fireEvent.click(
       await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Classify 1 Question" }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Start Classification" }),
     );
@@ -483,7 +530,9 @@ describe("TopicClassificationSetup", () => {
     fireEvent.click(
       await screen.findByRole("checkbox", { name: /atomic number of carbon/i }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Classify 1 Question" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Classify 1 Question" }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Start Classification" }),
     );
@@ -507,45 +556,62 @@ describe("ClassificationJobPage", () => {
 
   it("shows progress when job is processing", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "processing", processed: 40, total: 100 })
+      makeJob({ status: "processing", processed: 40, total: 100 }),
     );
     renderJobPage();
-    expect(await screen.findByText(/AI is classifying questions/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/AI is classifying questions/i),
+    ).toBeInTheDocument();
     expect(await screen.findByText("40 of 100 processed")).toBeInTheDocument();
   });
 
   it("shows results panel when job is completed", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(makeResults());
     renderJobPage();
-    expect(await screen.findByText("Classification Summary")).toBeInTheDocument();
-    expect(await screen.findByText("Confidence Distribution")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification Summary"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Confidence Distribution"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Accept Suggestions")).toBeInTheDocument();
   });
 
   it("shows failed state when job fails", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "failed", error: "AI provider unavailable" })
+      makeJob({ status: "failed", error: "AI provider unavailable" }),
     );
     renderJobPage();
-    expect(await screen.findByText("Classification job failed")).toBeInTheDocument();
-    expect(await screen.findByText("AI provider unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Retry Failed Questions/i })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification job failed"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("AI provider unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Retry Failed Questions/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows cancelled state without retry button", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "cancelled" })
+      makeJob({ status: "cancelled" }),
     );
     renderJobPage();
-    expect(await screen.findByText("Classification job was cancelled")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Retry/i })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification job was cancelled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Retry/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("retries failures via client-side navigation to the new job (no page reload)", async () => {
-    const { retryFailedClassification } = await import("@/api/ai-classification");
+    const { retryFailedClassification } =
+      await import("@/api/ai-classification");
 
     // A hard navigation is impossible to observe directly in jsdom, so replace
     // window.location with a plain, inspectable object: the previous
@@ -576,15 +642,15 @@ describe("ClassificationJobPage", () => {
               id: "job-1",
               status: "failed",
               error: "AI provider unavailable",
-            })
+            }),
       );
       vi.mocked(retryFailedClassification).mockResolvedValue(
-        makeJob({ id: "job-2", status: "queued" })
+        makeJob({ id: "job-2", status: "queued" }),
       );
 
       renderJobPage();
       fireEvent.click(
-        await screen.findByRole("button", { name: /Retry Failed Questions/i })
+        await screen.findByRole("button", { name: /Retry Failed Questions/i }),
       );
 
       // The retry mutation is called with the CURRENT job id.
@@ -594,7 +660,7 @@ describe("ClassificationJobPage", () => {
 
       // The newly created job renders in place — client-side router navigation.
       expect(
-        await screen.findByText("Retry Subject — Classification Job")
+        await screen.findByText("Retry Subject — Classification Job"),
       ).toBeInTheDocument();
       expect(vi.mocked(getClassificationJob)).toHaveBeenCalledWith("job-2");
 
@@ -612,38 +678,38 @@ describe("ClassificationJobPage", () => {
   });
 
   it("keeps the existing error handling when retry fails", async () => {
-    const { retryFailedClassification } = await import("@/api/ai-classification");
+    const { retryFailedClassification } =
+      await import("@/api/ai-classification");
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "failed", error: "AI provider unavailable" })
+      makeJob({ status: "failed", error: "AI provider unavailable" }),
     );
     vi.mocked(retryFailedClassification).mockRejectedValue(
-      new Error("All questions in this job are already classified")
+      new Error("All questions in this job are already classified"),
     );
 
     renderJobPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Retry Failed Questions/i })
+      await screen.findByRole("button", { name: /Retry Failed Questions/i }),
     );
 
     await waitFor(() => {
       expect(retryFailedClassification).toHaveBeenCalledWith("job-1");
     });
     // Still on the same failed job: a failed retry must not navigate away.
+    expect(screen.getByText("Classification job failed")).toBeInTheDocument();
     expect(
-      screen.getByText("Classification job failed")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Retry Failed Questions/i })
+      screen.getByRole("button", { name: /Retry Failed Questions/i }),
     ).toBeEnabled();
   });
 
   it("does NOT fetch exceptions on load — only after clicking Review Exceptions", async () => {
-    const { getClassificationJobExceptions } = await import("@/api/ai-classification");
+    const { getClassificationJobExceptions } =
+      await import("@/api/ai-classification");
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(
-      makeResults({ failed: 5, needsReview: 3 })
+      makeResults({ failed: 5, needsReview: 3 }),
     );
     renderJobPage();
     await screen.findByRole("button", { name: /Review Exceptions/i });
@@ -652,7 +718,7 @@ describe("ClassificationJobPage", () => {
 
   it("calls acceptThresholdClassifications with correct minConfidence", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(makeResults());
     vi.mocked(acceptThresholdClassifications).mockResolvedValue({
@@ -672,7 +738,7 @@ describe("ClassificationJobPage", () => {
 
   it("calls acceptAllClassifications when Accept All is clicked", async () => {
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(makeResults());
     vi.mocked(acceptAllClassifications).mockResolvedValue({
@@ -683,7 +749,9 @@ describe("ClassificationJobPage", () => {
     });
     renderJobPage();
     await screen.findByText("Accept Suggestions");
-    fireEvent.click(screen.getByRole("button", { name: /Accept All Suggestions/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Accept All Suggestions/i }),
+    );
     await waitFor(() => {
       expect(acceptAllClassifications).toHaveBeenCalledWith("job-1");
     });
@@ -705,7 +773,7 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
         succeeded: 85,
         failed: 15,
         error: "Provider error: rate limited",
-      })
+      }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(
       makeResults({
@@ -713,14 +781,20 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
         failed: 15,
         suggested: 70,
         confidence: { high: 50, medium: 20, low: 0 },
-      })
+      }),
     );
     renderJobPage();
-    expect(await screen.findByText("Classification Summary")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification Summary"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Partial")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Accept All Suggestions/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /Retry Failed Questions/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Accept All Suggestions/i }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: /Retry Failed Questions/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows job-level error and counters for a failed job", async () => {
@@ -731,19 +805,24 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
         processed: 40,
         succeeded: 0,
         failed: 40,
-        error: "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)",
-      })
+        error:
+          "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)",
+      }),
     );
     renderJobPage();
-    expect(await screen.findByText("Classification job failed")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification job failed"),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
-        "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)"
-      )
+        "Credential error: 402: Insufficient Balance (model=deepseek-v4-flash)",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText("Processed")).toBeInTheDocument();
     expect(screen.getByText("Total")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Retry Failed Questions/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Retry Failed Questions/i }),
+    ).toBeInTheDocument();
   });
 
   it("preserves counts for a cancelled job without presenting it as failed", async () => {
@@ -754,10 +833,12 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
         processed: 25,
         succeeded: 20,
         failed: 5,
-      })
+      }),
     );
     renderJobPage();
-    expect(await screen.findByText("Classification job was cancelled")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Classification job was cancelled"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Cancelled")).toBeInTheDocument();
     expect(screen.getByText("Succeeded")).toBeInTheDocument();
     expect(screen.getByText("20")).toBeInTheDocument();
@@ -772,22 +853,25 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
         processed: 50,
         succeeded: 40,
         failed: 10,
-      })
+      }),
     );
     renderJobPage();
-    expect(await screen.findByText(/AI is classifying questions/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/AI is classifying questions/i),
+    ).toBeInTheDocument();
     expect(await screen.findByText("10")).toBeInTheDocument();
     expect(screen.getByText(/failed so far/i)).toBeInTheDocument();
     expect(getClassificationJobResults).not.toHaveBeenCalled();
   });
 
   it("renders failureCategory/failureReason for failed exceptions", async () => {
-    const { getClassificationJobExceptions } = await import("@/api/ai-classification");
+    const { getClassificationJobExceptions } =
+      await import("@/api/ai-classification");
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(
-      makeResults({ failed: 1, needsReview: 0 })
+      makeResults({ failed: 1, needsReview: 0 }),
     );
     vi.mocked(getClassificationJobExceptions).mockResolvedValue({
       items: [
@@ -808,20 +892,31 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
       limit: 25,
     });
     renderJobPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Review Exceptions/i }));
-    expect(await screen.findByText("Provider credential error")).toBeInTheDocument();
-    expect(screen.getByText(/Credential error: 402: Insufficient Balance/)).toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Review Exceptions/i }),
+    );
+    expect(
+      await screen.findByText("Provider credential error"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Credential error: 402: Insufficient Balance/),
+    ).toBeInTheDocument();
     // Both the summary note and the row confirm there is no usable suggestion
     expect(screen.getAllByText(/no AI suggestion/i).length).toBeGreaterThan(0);
   });
 
   it("keeps a low-confidence suggestion visually and semantically distinct from a failed classification", async () => {
-    const { getClassificationJobExceptions } = await import("@/api/ai-classification");
+    const { getClassificationJobExceptions } =
+      await import("@/api/ai-classification");
     vi.mocked(getClassificationJob).mockResolvedValue(
-      makeJob({ status: "completed", processed: 100 })
+      makeJob({ status: "completed", processed: 100 }),
     );
     vi.mocked(getClassificationJobResults).mockResolvedValue(
-      makeResults({ failed: 0, needsReview: 0, confidence: { high: 0, medium: 0, low: 1 } })
+      makeResults({
+        failed: 0,
+        needsReview: 0,
+        confidence: { high: 0, medium: 0, low: 1 },
+      }),
     );
     vi.mocked(getClassificationJobExceptions).mockResolvedValue({
       items: [
@@ -842,10 +937,16 @@ describe("ClassificationJobPage — terminal states & failure diagnostics", () =
       limit: 25,
     });
     renderJobPage();
-    fireEvent.click(await screen.findByRole("button", { name: /Review Exceptions/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Review Exceptions/i }),
+    );
     // Badge inside the table (filter tab shares the label, so use getAllBy)
-    expect((await screen.findAllByText("Low Confidence")).length).toBeGreaterThan(0);
-    expect(await screen.findByText(/AI suggestion — not yet the canonical/i)).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Low Confidence")).length,
+    ).toBeGreaterThan(0);
+    expect(
+      await screen.findByText(/AI suggestion — not yet the canonical/i),
+    ).toBeInTheDocument();
     expect(await screen.findByText("55%")).toBeInTheDocument();
   });
 });

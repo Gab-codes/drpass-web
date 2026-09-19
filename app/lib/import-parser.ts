@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type {
   ParsedQuestion,
+  ParsedClassification,
   ParseSummary,
   AnswerOption,
 } from "../types/import-types";
@@ -67,6 +68,92 @@ export function toAnswerOption(v: unknown): AnswerOption | null {
 
   return null;
 }
+
+// ── Difficulty normalization ─────────────────────────────────────────────────
+
+export const VALID_DIFFICULTIES = ["EASY", "MEDIUM", "HARD"] as const;
+
+/**
+ * Normalize a raw difficulty value to the backend's question_difficulty enum.
+ * Accepts any casing ("easy" → "EASY"); unknown values are dropped to null and
+ * produce a row warning instead of failing the row or the whole import batch.
+ */
+export function parseDifficulty(raw: unknown): {
+  difficulty: string | null;
+  warning?: string;
+} {
+  if (raw == null || raw === "") return { difficulty: null };
+  const normalized = String(raw).trim().toUpperCase();
+  if ((VALID_DIFFICULTIES as readonly string[]).includes(normalized)) {
+    return { difficulty: normalized };
+  }
+  return {
+    difficulty: null,
+    warning: `Unknown difficulty "${String(raw)}" ignored`,
+  };
+}
+
+// ── Imported classification parsing ──────────────────────────────────────────
+
+/**
+ * Validate and normalize an optional imported classification from enriched
+ * JSON:
+ *
+ *   "classification": { "topic": "...", "confidence": 0.95 }
+ *
+ * Classification is always optional. A missing/empty value yields
+ * { classification: null } with no warning. A malformed structure or an
+ * invalid confidence drops the classification and produces a row warning —
+ * it must never invalidate the row or reject the import.
+ */
+export function parseClassification(raw: unknown): {
+  classification: ParsedClassification | null;
+  warning?: string;
+} {
+  if (raw == null) return { classification: null };
+
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return {
+      classification: null,
+      warning: 'Invalid classification ignored (expected an object with "topic" and "confidence")',
+    };
+  }
+
+  const record = raw as Record<string, unknown>;
+  const topic = typeof record.topic === "string" ? record.topic.trim() : "";
+  const confidence = record.confidence;
+
+  if (!topic) {
+    return {
+      classification: null,
+      warning: "Invalid classification ignored (missing topic)",
+    };
+  }
+
+  if (
+    typeof confidence !== "number" ||
+    !Number.isFinite(confidence) ||
+    confidence < 0 ||
+    confidence > 1
+  ) {
+    return {
+      classification: null,
+      warning: `Invalid classification confidence ignored (must be a number between 0 and 1)`,
+    };
+  }
+
+  return { classification: { topic, confidence } };
+}
+
+/** Append a reason to an existing statusReason using the " | " convention. */
+export function appendReason(
+  statusReason: string | undefined,
+  extra?: string,
+): string | undefined {
+  if (!extra) return statusReason;
+  return statusReason ? `${statusReason} | ${extra}` : extra;
+}
+
 
 // ── Spreadsheet metadata helpers ────────────────────────────────────────────
 
@@ -338,8 +425,26 @@ export function detectStatus(
   return { status: "valid" };
 }
 
-const KNOWN_SOURCES = ["JAMB", "WAEC", "NECO", "GCE"] as const;
+const KNOWN_SOURCES = ["JAMB", "WAEC", "NECO", "GCE", "AI_GENERATED"] as const;
 type KnownSource = (typeof KNOWN_SOURCES)[number];
+
+/**
+ * Normalize a raw source value to a canonical KNOWN_SOURCES entry.
+ * Case-insensitive, trims whitespace. Returns null when the value is not a
+ * recognized source — callers fall back to their own detection (or null).
+ */
+export function normalizeKnownSource(
+  raw: unknown,
+): KnownSource | null {
+  if (raw == null) return null;
+  const normalized = String(raw).trim().toUpperCase();
+  if (
+    (KNOWN_SOURCES as readonly string[]).includes(normalized)
+  ) {
+    return normalized as KnownSource;
+  }
+  return null;
+}
 
 /**
  * Detect a source from a single text string (sheet name or filename stem).
@@ -806,6 +911,9 @@ export async function parseXlsx(file: File): Promise<{
           { key: "D", text: normOptions.D },
         ];
         const rawAns = String(record.correctAnswer ?? record.answer ?? "");
+        const { difficulty, warning: difficultyWarning } = parseDifficulty(
+          record.difficulty,
+        );
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -819,7 +927,7 @@ export async function parseXlsx(file: File): Promise<{
           correctAnswer: rawAns,
           source: detectSource(sheetName, file.name),
           type: detectQuestionType(optionsArr, rawAns),
-          difficulty: record.difficulty ? String(record.difficulty) : null,
+          difficulty,
           explanation: record.explanation ? String(record.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
@@ -841,9 +949,15 @@ export async function parseXlsx(file: File): Promise<{
 
         if (yearConflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason
-            ? `${statusReason} | Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`
-            : `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`;
+          statusReason = appendReason(
+            statusReason,
+            `Year conflict: Sheet is ${sheetMeta.year} but row says ${record.year}. Used row year.`,
+          );
+        }
+
+        if (difficultyWarning && status !== "error") {
+          status = "warning";
+          statusReason = appendReason(statusReason, difficultyWarning);
         }
 
         allQuestions.push({ ...base, status, statusReason });
@@ -892,6 +1006,9 @@ export async function parseXlsx(file: File): Promise<{
           { key: "D", text: normOptions.D },
         ];
         const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+        const { difficulty, warning: difficultyWarning } = parseDifficulty(
+          row.difficulty,
+        );
 
         const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
           _clientId: clientId,
@@ -905,7 +1022,7 @@ export async function parseXlsx(file: File): Promise<{
           correctAnswer: rawAns,
           source: detectSource(sheetName, file.name),
           type: detectQuestionType(optionsArr, rawAns),
-          difficulty: row.difficulty ? String(row.difficulty) : null,
+          difficulty,
           explanation: row.explanation ? String(row.explanation) : null,
           hasImage: detectPossibleImage(cleanText),
           image: null,
@@ -919,9 +1036,12 @@ export async function parseXlsx(file: File): Promise<{
         let { status, statusReason } = detectStatus(base);
         if (conflict && status === "valid") {
           status = "warning";
-          statusReason = statusReason
-            ? `${statusReason} | ${conflictReason}`
-            : conflictReason;
+          statusReason = appendReason(statusReason, conflictReason);
+        }
+
+        if (difficultyWarning && status !== "error") {
+          status = "warning";
+          statusReason = appendReason(statusReason, difficultyWarning);
         }
 
         allQuestions.push({ ...base, status, statusReason });
@@ -992,6 +1112,17 @@ export async function parseJson(file: File): Promise<{
       { key: "D", text: normOptions.D },
     ];
     const rawAns = String(row.correctAnswer ?? row.answer ?? "");
+    const { difficulty, warning: difficultyWarning } = parseDifficulty(
+      row.difficulty,
+    );
+    const { classification, warning: classificationWarning } =
+      parseClassification(row.classification);
+
+    // Row-level source wins when recognized (case-insensitive, trimmed,
+    // normalized to the canonical uppercase value). Otherwise fall back to
+    // the existing filename/sheet detection — a source is never invented.
+    const rowSource = normalizeKnownSource(row.source);
+    const resolvedSource = rowSource ?? detectSource("JSON", file.name);
 
     const base: Omit<ParsedQuestion, "status" | "statusReason"> = {
       _clientId: clientId,
@@ -1003,10 +1134,11 @@ export async function parseJson(file: File): Promise<{
       rawText,
       options: optionsArr,
       correctAnswer: rawAns,
-      source: detectSource("JSON", file.name),
+      source: resolvedSource,
       type: detectQuestionType(optionsArr, rawAns),
-      difficulty: row.difficulty ? String(row.difficulty) : null,
+      difficulty,
       explanation: row.explanation ? String(row.explanation) : null,
+      classification,
       hasImage: detectPossibleImage(cleanText),
       image: null,
     };
@@ -1019,10 +1151,19 @@ export async function parseJson(file: File): Promise<{
     let { status, statusReason } = detectStatus(base);
     if (conflict && status === "valid") {
       status = "warning";
-      statusReason = statusReason
-        ? `${statusReason} | ${conflictReason}`
-        : conflictReason;
+      statusReason = appendReason(statusReason, conflictReason);
     }
+
+    if (difficultyWarning && status !== "error") {
+      status = "warning";
+      statusReason = appendReason(statusReason, difficultyWarning);
+    }
+
+    if (classificationWarning && status !== "error") {
+      status = "warning";
+      statusReason = appendReason(statusReason, classificationWarning);
+    }
+
     questions.push({ ...base, status, statusReason });
   }
 
@@ -1050,6 +1191,8 @@ export function buildSummary(
     errorCount: questions.filter((q) => q.status === "error").length,
     duplicateCount: questions.filter((q) => q.status === "duplicate").length,
     contextRowCount,
+    withClassificationCount: questions.filter((q) => q.classification).length,
+    withDifficultyCount: questions.filter((q) => q.difficulty).length,
   };
 }
 

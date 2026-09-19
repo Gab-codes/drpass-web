@@ -3,7 +3,13 @@
  * Used by the import workflow and the admin question form.
  * Do not scatter this definition across components.
  */
-export const QUESTION_SOURCES = ["JAMB", "WAEC", "NECO", "GCE"] as const;
+export const QUESTION_SOURCES = [
+  "JAMB",
+  "WAEC",
+  "NECO",
+  "GCE",
+  "AI_GENERATED",
+] as const;
 
 export type QuestionSource = (typeof QUESTION_SOURCES)[number];
 

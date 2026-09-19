@@ -2,16 +2,25 @@ import * as React from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, AlertCircleIcon, Folder01Icon } from "@hugeicons/core-free-icons";
+import {
+  Add01Icon,
+  AlertCircleIcon,
+  Folder01Icon,
+} from "@hugeicons/core-free-icons";
 
-import { getAdminSubjects, questionKeys } from "@/api/questions";
+import { getAdminSubjects, questionKeys } from "@/api/admin-questions";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
 export default function SubjectsList() {
-  const { data: subjects = [], isLoading, isError, error } = useQuery({
+  const {
+    data: subjects = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: questionKeys.adminSubjects(),
     queryFn: getAdminSubjects,
   });
@@ -43,7 +52,9 @@ export default function SubjectsList() {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading subjects...</p>
       ) : subjects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No questions found in the database.</p>
+        <p className="text-sm text-muted-foreground">
+          No questions found in the database.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {subjects.map((sub) => (

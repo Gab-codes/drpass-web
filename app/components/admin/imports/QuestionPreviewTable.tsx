@@ -163,6 +163,14 @@ function QuestionRow({
               Has image
             </span>
           )}
+          {q.classification && (
+            <span className="text-xs text-muted-foreground">
+              Topic: {q.classification.topic}{" "}
+              <span className="tabular-nums">
+                ({Math.round(q.classification.confidence * 100)}%)
+              </span>
+            </span>
+          )}
           {isRemoved && (
             <span className="text-xs font-medium text-muted-foreground">
               Marked for removal

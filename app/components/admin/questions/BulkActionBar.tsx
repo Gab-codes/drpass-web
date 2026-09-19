@@ -5,10 +5,11 @@ import {
   Cancel01Icon,
   PlayIcon,
   PauseIcon,
+  Delete01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 
-type ActionType = "approve" | "reject" | "activate" | "deactivate";
+type ActionType = "approve" | "reject" | "activate" | "deactivate" | "delete";
 
 interface BulkActionBarProps {
   count: number;
@@ -66,6 +67,16 @@ export function BulkActionBar({ count, isBusy, onBulk }: BulkActionBarProps) {
         >
           <HugeiconsIcon icon={PauseIcon} className="mr-1 h-4 w-4" />
           Deactivate
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onBulk("delete")}
+          disabled={isBusy}
+          className="text-destructive hover:text-destructive ml-4"
+        >
+          <HugeiconsIcon icon={Delete01Icon} className="mr-1 h-4 w-4" />
+          Delete
         </Button>
       </div>
     </div>

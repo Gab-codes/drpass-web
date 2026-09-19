@@ -9,7 +9,7 @@ import {
   importQuestions,
   rejectQuestion,
   updateQuestion,
-} from "@/api/questions";
+} from "@/api/admin-questions";
 import { apiClient } from "@/lib/axios";
 import type { AdminQuestion, ImportQuestionsResult } from "@/types/questions";
 
@@ -101,6 +101,8 @@ describe("question API", () => {
       unsupported: 0,
       failed: 0,
       importId: "import-1",
+      classificationsResolved: 0,
+      classificationsUnresolved: 0,
     };
     mockedApiClient.post.mockResolvedValueOnce({ data: result });
 
@@ -140,6 +142,8 @@ describe("question API", () => {
       unsupported: 1,
       failed: 1,
       importId: "import-2",
+      classificationsResolved: 0,
+      classificationsUnresolved: 0,
     };
     mockedApiClient.post.mockResolvedValueOnce({ data: result });
 

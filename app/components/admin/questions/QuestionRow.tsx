@@ -7,6 +7,7 @@ import {
   ViewIcon,
   AlertCircleIcon,
   Cancel01Icon,
+  Delete01Icon,
 } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { truncate, formatDate, statusVariant } from "@/constants/questions";
 import type { AdminQuestion } from "@/types/questions";
 
-type ActionType = "approve" | "reject" | "activate" | "deactivate";
+type ActionType = "approve" | "reject" | "activate" | "deactivate" | "delete";
 
 interface QuestionRowProps {
   question: AdminQuestion;
@@ -133,6 +134,17 @@ export function QuestionRow({
               className="mx-1 h-3.5 w-3.5 text-muted-foreground"
             />
           )}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => onAction("delete")}
+            disabled={busy}
+            aria-label="Delete question"
+            title="Delete"
+            className="text-destructive hover:text-destructive"
+          >
+            <HugeiconsIcon icon={Delete01Icon} />
+          </Button>
         </div>
       </td>
     </tr>
