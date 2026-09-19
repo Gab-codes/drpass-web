@@ -12,8 +12,10 @@ export interface Question {
 }
 
 export interface ExamConfig {
-  subjects: string[];
-  questionsPerSubject: number;
+  subjects: Array<{
+    subjectCode: string;
+    questionCount: number;
+  }>;
   totalTimeMinutes: number;
   /** Route the student is returned to when leaving or finishing the exam. */
   exitPath: string;
@@ -111,10 +113,11 @@ export function getAvailableQuestionCount(subjectId: string): number {
 export function generateMockExam(config: ExamConfig): Question[] {
   const selectedQuestions: Question[] = [];
   
-  for (const subjectId of config.subjects) {
+  for (const subjectConfig of config.subjects) {
+    const subjectId = subjectConfig.subjectCode;
     const subjectQuestions = MOCK_QUESTIONS[subjectId] || [];
     // Just take the required number, pad with duplicates if necessary for testing UI
-    let toAdd = config.questionsPerSubject;
+    let toAdd = subjectConfig.questionCount;
     let i = 0;
     while (toAdd > 0 && subjectQuestions.length > 0) {
       selectedQuestions.push({

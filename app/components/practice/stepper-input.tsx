@@ -16,6 +16,7 @@ interface StepperInputProps {
   hint?: string;
   error?: string;
   disabled?: boolean;
+  variant?: "default" | "compact";
 }
 
 // Accessible numeric stepper: − / free-typed input / + with hard clamping.
@@ -30,6 +31,7 @@ export function StepperInput({
   hint,
   error,
   disabled,
+  variant = "default",
 }: StepperInputProps) {
   const [raw, setRaw] = useState<string>(String(value));
 
@@ -54,17 +56,22 @@ export function StepperInput({
 
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
+  const isCompact = variant === "compact";
+
   return (
-    <div className="space-y-2">
-      <label
-        htmlFor={id}
-        className="text-sm font-medium text-foreground"
-      >
-        {label}
-      </label>
+    <div className={cn(!isCompact && "space-y-2")}>
+      {!isCompact && (
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-foreground"
+        >
+          {label}
+        </label>
+      )}
       <div
         className={cn(
-          "flex items-stretch h-11 rounded-xl border border-border bg-input/30 overflow-hidden transition-colors",
+          "flex items-stretch rounded-xl border border-border bg-input/30 overflow-hidden transition-colors",
+          isCompact ? "h-9 w-28" : "h-11",
           "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
           error && "border-destructive focus-within:ring-destructive/20",
           disabled && "opacity-50 pointer-events-none"
@@ -115,9 +122,12 @@ export function StepperInput({
                 commit((e.target as HTMLInputElement).value);
               }
             }}
-            className="h-full rounded-none border-0 bg-transparent text-center font-medium tabular-nums focus-visible:ring-0 focus-visible:border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={cn(
+              "h-full rounded-none border-0 bg-transparent text-center font-medium tabular-nums focus-visible:ring-0 focus-visible:border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+              isCompact && "text-sm px-1"
+            )}
           />
-          {suffix && (
+          {suffix && !isCompact && (
             <span
               aria-hidden="true"
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
@@ -149,7 +159,7 @@ export function StepperInput({
         </Button>
       </div>
 
-      {error ? (
+      {!isCompact && error ? (
         <p
           id={`${id}-error`}
           role="alert"
@@ -157,7 +167,7 @@ export function StepperInput({
         >
           {error}
         </p>
-      ) : hint ? (
+      ) : !isCompact && hint ? (
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">
           {hint}
         </p>

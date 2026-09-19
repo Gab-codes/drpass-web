@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,21 +9,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  MOCK_SUBJECTS,
-  QUESTION_PRESETS,
-  TIME_PRESETS,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   PRACTICE_LIMITS,
   getAvailableQuestionCount,
   generateMockExam,
 } from "@/data/mock-exam";
 import { useExamStore } from "@/store/exam-store";
 import { StepperInput } from "@/components/practice/stepper-input";
+import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_QUESTIONS = 10;
-const DEFAULT_MINUTES = 15;
+const DEFAULT_QUESTIONS_PER_SUBJECT = 10;
+const TIME_PRESETS = [5, 10, 15, 30, 45, 60];
 
-// Preset chip shared by both steppers
+// Preset chip for time
 function PresetChips({
   values,
   current,
@@ -37,7 +44,7 @@ function PresetChips({
 }) {
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className="flex flex-wrap items-center gap-1.5 mt-3"
       role="group"
       aria-label={label}
     >
@@ -55,10 +62,10 @@ function PresetChips({
               isActive
                 ? "border-primary bg-accent text-accent-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
-              "cursor-pointer"
+              "cursor-pointer",
             )}
           >
-            {v}
+            {v} min
           </button>
         );
       })}
@@ -66,39 +73,87 @@ function PresetChips({
   );
 }
 
+type SubjectConfig = {
+  code: string;
+  name: string;
+  active: boolean;
+  count: number;
+};
+
 export default function PracticeSetup() {
   const navigate = useNavigate();
   const setupExam = useExamStore((state) => state.setupExam);
+  const { user } = useUser();
 
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [questionsPerSubject, setQuestionsPerSubject] = useState<number>(DEFAULT_QUESTIONS);
-  const [totalTimeMinutes, setTotalTimeMinutes] = useState<number>(DEFAULT_MINUTES);
+  const [subjectsConfig, setSubjectsConfig] = useState<SubjectConfig[]>([]);
+  const [totalTimeMinutes, setTotalTimeMinutes] = useState<number>(0);
+  const [isTimeManuallySet, setIsTimeManuallySet] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const toggleSubject = (id: string) => {
-    setSelectedSubjects((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((s) => s !== id);
-      }
-      if (prev.length < PRACTICE_LIMITS.maxSubjects) {
-        return [...prev, id];
-      }
-      return prev; // Already have max, no-op
-    });
+  // Initialize from user subjects
+  useEffect(() => {
+    if (user?.subjects && subjectsConfig.length === 0) {
+      const initialConfig = user.subjects.map((sub) => ({
+        code: sub.code,
+        name: sub.name,
+        active: true,
+        count: DEFAULT_QUESTIONS_PER_SUBJECT,
+      }));
+      setSubjectsConfig(initialConfig);
+    }
+  }, [user?.subjects, subjectsConfig.length]);
+
+  const activeSubjects = subjectsConfig.filter((s) => s.active && s.count > 0);
+  const totalQuestions = activeSubjects.reduce((sum, s) => sum + s.count, 0);
+
+  // Auto-update time limit if not manually set
+  useEffect(() => {
+    if (!isTimeManuallySet && totalQuestions > 0) {
+      // 1 minute per question default
+      setTotalTimeMinutes(totalQuestions);
+    } else if (!isTimeManuallySet && totalQuestions === 0) {
+      setTotalTimeMinutes(0);
+    }
+  }, [totalQuestions, isTimeManuallySet]);
+
+  const toggleSubject = (code: string) => {
+    setSubjectsConfig((prev) =>
+      prev.map((s) => {
+        if (s.code !== code) return s;
+        // If toggling off, count remains its value but it's not active
+        return { ...s, active: !s.active };
+      }),
+    );
   };
 
-  const isValidQuestions =
-    questionsPerSubject >= PRACTICE_LIMITS.minQuestionsPerSubject &&
-    questionsPerSubject <= PRACTICE_LIMITS.maxQuestionsPerSubject;
-  const isValidMinutes =
+  const updateSubjectCount = (code: string, count: number) => {
+    setSubjectsConfig((prev) =>
+      prev.map((s) => {
+        if (s.code !== code) return s;
+        // Auto-activate if they increase count from 0 while inactive
+        return { ...s, count, active: count > 0 ? true : s.active };
+      }),
+    );
+  };
+
+  const handleTimeChange = (val: number) => {
+    setIsTimeManuallySet(true);
+    setTotalTimeMinutes(val);
+  };
+
+  const isValid =
+    activeSubjects.length > 0 &&
+    totalQuestions >= 1 &&
     totalTimeMinutes >= PRACTICE_LIMITS.minTotalMinutes &&
     totalTimeMinutes <= PRACTICE_LIMITS.maxTotalMinutes;
-  const isValid = isValidQuestions && isValidMinutes;
 
   const handleStart = () => {
-    if (selectedSubjects.length === 0 || !isValid) return;
+    if (!isValid) return;
     const config = {
-      subjects: selectedSubjects,
-      questionsPerSubject,
+      subjects: activeSubjects.map((s) => ({
+        subjectCode: s.code,
+        questionCount: s.count,
+      })),
       totalTimeMinutes,
       exitPath: "/practice",
     };
@@ -107,246 +162,374 @@ export default function PracticeSetup() {
     navigate("/practice/exam");
   };
 
-  const totalQuestions = selectedSubjects.length * questionsPerSubject;
-
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto py-8">
-      <div>
-        <h1 className="text-2xl font-heading font-semibold tracking-tight text-foreground">
-          Quick Practice
+    <div className="flex flex-col gap-8 max-w-4xl mx-auto py-8 px-4 sm:px-6">
+      <header>
+        <h1 className="text-3xl font-heading font-semibold tracking-tight text-foreground">
+          Practice Setup
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Configure a focused practice session to prepare for exam day.
+        <p className="text-muted-foreground mt-2 max-w-xl">
+          Customize your practice session by choosing how many questions to
+          attempt per subject.
         </p>
-      </div>
+      </header>
 
-      <div className="grid gap-8 md:grid-cols-[2fr_1fr] items-start">
-        {/* Configuration column */}
-        <div className="space-y-8">
-          {/* Subjects */}
-          <section aria-labelledby="subjects-heading">
-            <div className="mb-4">
+      <div className="grid gap-8 md:grid-cols-[1fr_320px] items-start pb-24 md:pb-0">
+        {/* Left Column: Configuration */}
+        <div className="space-y-10">
+          {/* Subjects Section */}
+          <section aria-labelledby="subjects-heading" className="space-y-4">
+            <div>
               <h2
                 id="subjects-heading"
-                className="text-base font-medium text-foreground"
+                className="text-lg font-medium text-foreground"
               >
-                Select Subjects
+                Question Distribution
               </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Choose 1 or 2 subjects for this practice session.
-              </p>
             </div>
+
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
+              className="space-y-3"
               role="group"
               aria-label="Subject selection"
             >
-              {MOCK_SUBJECTS.map((subject) => {
-                const isSelected = selectedSubjects.includes(subject.id);
-                const isDisabled = !isSelected && selectedSubjects.length >= 2;
-                return (
-                  <button
-                    key={subject.id}
-                    type="button"
-                    onClick={() => toggleSubject(subject.id)}
-                    disabled={isDisabled}
-                    aria-pressed={isSelected}
-                    className={cn(
-                      "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150 outline-none",
-                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      isSelected
-                        ? "border-primary bg-accent"
-                        : "border-border bg-card hover:border-primary/40 hover:bg-accent/40",
-                      isDisabled
-                        ? "opacity-40 cursor-not-allowed"
-                        : "cursor-pointer"
-                    )}
-                  >
-                    {/* Checkbox indicator */}
-                    <span
-                      aria-hidden="true"
+              {subjectsConfig.length === 0 ? (
+                <div className="p-4 rounded-2xl border border-dashed text-center text-sm text-muted-foreground">
+                  Loading your subjects...
+                </div>
+              ) : (
+                subjectsConfig.map((subject) => {
+                  const isSelected = subject.active && subject.count > 0;
+                  return (
+                    <div
+                      key={subject.code}
                       className={cn(
-                        "flex-shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all duration-200 shadow-sm",
                         isSelected
-                          ? "border-primary bg-primary"
-                          : "border-border bg-background"
+                          ? "border-primary/50 bg-accent/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                          : "border-border/50 bg-card hover:border-border",
                       )}
                     >
-                      {isSelected && (
-                        <svg
-                          className="w-2.5 h-2.5 text-primary-foreground"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={3.5}
+                      <button
+                        type="button"
+                        onClick={() => toggleSubject(subject.code)}
+                        aria-pressed={isSelected}
+                        className="flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg cursor-pointer"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary"
+                              : "border-muted-foreground/30 bg-background",
+                          )}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span
-                      className={cn(
-                        "flex-1 min-w-0",
-                        isSelected ? "text-accent-foreground" : "text-foreground"
-                      )}
-                    >
-                      <span
+                          {isSelected && (
+                            <svg
+                              className="w-3 h-3 text-primary-foreground"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        <div>
+                          <span
+                            className={cn(
+                              "block font-medium",
+                              isSelected
+                                ? "text-foreground"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {subject.name}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Numeric Stepper for Question Count */}
+                      <div
                         className={cn(
-                          "block font-medium text-sm",
-                          isSelected ? "text-accent-foreground" : "text-foreground"
+                          "transition-opacity ml-8 sm:ml-0",
+                          !subject.active && "opacity-50 pointer-events-none",
                         )}
+                        onClick={(e) => {
+                          // Prevent toggling the subject when clicking the stepper
+                          e.stopPropagation();
+                        }}
                       >
-                        {subject.name}
-                      </span>
-                      <span
-                        className={cn(
-                          "block text-xs mt-0.5",
-                          isSelected ? "text-accent-foreground/70" : "text-muted-foreground"
-                        )}
-                      >
-                        {getAvailableQuestionCount(subject.id) > 0
-                          ? `${getAvailableQuestionCount(subject.id)} questions available`
-                          : "No questions available yet"}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+                        <StepperInput
+                          id={`stepper-${subject.code}`}
+                          label={`Questions for ${subject.name}`}
+                          value={subject.count}
+                          onChange={(val) =>
+                            updateSubjectCount(subject.code, val)
+                          }
+                          min={0}
+                          max={PRACTICE_LIMITS.maxQuestionsPerSubject}
+                          variant="compact"
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-            {selectedSubjects.length === 2 && (
-              <p className="text-xs text-muted-foreground mt-2" role="status">
-                Maximum of 2 subjects selected.
-              </p>
-            )}
-          </section>
-
-          {/* Session configuration */}
-          <section aria-labelledby="config-heading">
-            <div className="mb-4">
-              <h2
-                id="config-heading"
-                className="text-base font-medium text-foreground"
-              >
-                Session Settings
-              </h2>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="space-y-2.5">
-                <StepperInput
-                  id="questions-input"
-                  label="Questions per subject"
-                  value={questionsPerSubject}
-                  onChange={setQuestionsPerSubject}
-                  min={PRACTICE_LIMITS.minQuestionsPerSubject}
-                  max={PRACTICE_LIMITS.maxQuestionsPerSubject}
-                  suffix="questions"
-                  error={
-                    isValidQuestions
-                      ? undefined
-                      : `Enter a value between ${PRACTICE_LIMITS.minQuestionsPerSubject} and ${PRACTICE_LIMITS.maxQuestionsPerSubject}.`
-                  }
-                />
-                <PresetChips
-                  values={QUESTION_PRESETS}
-                  current={questionsPerSubject}
-                  onSelect={setQuestionsPerSubject}
-                  label="Quick question count presets"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <StepperInput
-                  id="time-input"
-                  label="Total time limit"
-                  value={totalTimeMinutes}
-                  onChange={setTotalTimeMinutes}
-                  min={PRACTICE_LIMITS.minTotalMinutes}
-                  max={PRACTICE_LIMITS.maxTotalMinutes}
-                  suffix="minutes"
-                  hint="Applies to the entire practice session."
-                  error={
-                    isValidMinutes
-                      ? undefined
-                      : `Enter a value between ${PRACTICE_LIMITS.minTotalMinutes} and ${PRACTICE_LIMITS.maxTotalMinutes} minutes.`
-                  }
-                />
-                <PresetChips
-                  values={TIME_PRESETS}
-                  current={totalTimeMinutes}
-                  onSelect={setTotalTimeMinutes}
-                  label="Quick duration presets"
-                />
-              </div>
-            </div>
-
-            {/* Availability advisory — soft, non-blocking */}
-            {selectedSubjects.length > 0 && (() => {
-              const lowest = Math.min(
-                ...selectedSubjects.map((s) => getAvailableQuestionCount(s))
+            {/* Soft Warning for availability */}
+            {(() => {
+              const warnings = activeSubjects.filter(
+                (s) => s.count > getAvailableQuestionCount(s.code),
               );
-              if (questionsPerSubject <= lowest) return null;
+              if (warnings.length === 0) return null;
               return (
-                <p
-                  className="text-xs text-warning mt-4"
-                  role="status"
-                >
-                  Some selected subjects have fewer than {questionsPerSubject}{" "}
-                  questions available. Your session will fill the remaining
-                  questions from the full question bank.
+                <p className="text-sm text-warning/90 mt-3" role="status">
+                  Note: You requested more questions than available for{" "}
+                  {warnings.map((w) => w.name).join(", ")}. Remaining slots will
+                  be filled with duplicates or generic questions.
                 </p>
               );
             })()}
           </section>
+
+          {/* Time Limit Section */}
+          <section aria-labelledby="time-heading" className="space-y-4">
+            <div>
+              <h2
+                id="time-heading"
+                className="text-lg font-medium text-foreground"
+              >
+                Time Limit
+              </h2>
+            </div>
+
+            <div className="p-5 rounded-2xl border border-border/50 bg-card shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Duration (minutes)
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {!isTimeManuallySet && totalQuestions > 0
+                      ? "Automatically suggested based on 1 min per question."
+                      : "Custom time selected."}
+                  </p>
+                </div>
+                <div className="w-32 shrink-0">
+                  <StepperInput
+                    id="time-input"
+                    label="Total time limit"
+                    value={totalTimeMinutes}
+                    onChange={handleTimeChange}
+                    min={PRACTICE_LIMITS.minTotalMinutes}
+                    max={PRACTICE_LIMITS.maxTotalMinutes}
+                    variant="compact"
+                  />
+                </div>
+              </div>
+
+              <PresetChips
+                values={TIME_PRESETS}
+                current={totalTimeMinutes}
+                onSelect={handleTimeChange}
+                label="Quick duration presets"
+              />
+            </div>
+          </section>
         </div>
 
-        {/* Summary card */}
-        <div>
-          <Card className="sticky top-20 bg-surface-2 shadow-none rounded-2xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium">
-                Practice Summary
-              </CardTitle>
+        {/* Right Column: Sticky Summary (Desktop) */}
+        <div className="hidden md:block">
+          <Card className="sticky top-24 bg-surface-2 shadow-sm rounded-3xl border-border/60">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-medium">Summary</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 pb-5">
-              <div className="flex justify-between items-center text-sm py-2.5 border-b border-border/60">
-                <span className="text-muted-foreground">Subjects</span>
+            <CardContent className="space-y-4 pb-6">
+              <div className="flex justify-between items-center text-sm py-3 border-b border-border/60">
+                <span className="text-muted-foreground">Selected Subjects</span>
                 <span className="font-medium text-foreground">
-                  {selectedSubjects.length === 0
-                    ? "None"
-                    : selectedSubjects.length === 1
-                    ? "1 subject"
-                    : "2 subjects"}
+                  {activeSubjects.length}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm py-2.5 border-b border-border/60">
+              <div className="flex justify-between items-center text-sm py-3 border-b border-border/60">
                 <span className="text-muted-foreground">Total Questions</span>
-                <span className="font-medium text-foreground tabular-nums">
+                <span className="font-medium text-foreground tabular-nums text-lg">
                   {totalQuestions}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm py-2.5">
-                <span className="text-muted-foreground">Duration</span>
-                <span className="font-medium text-foreground">
+              <div className="flex justify-between items-center text-sm py-3">
+                <span className="text-muted-foreground">Time Limit</span>
+                <span className="font-medium text-foreground tabular-nums text-lg">
                   {totalTimeMinutes} min
                 </span>
               </div>
             </CardContent>
             <CardFooter className="pt-0">
-              <Button
-                size="lg"
-                className="w-full rounded-xl"
-                disabled={selectedSubjects.length === 0 || !isValid}
-                onClick={handleStart}
-              >
-                Start Practice
-              </Button>
+              <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <DialogTrigger>
+                  <Button
+                    size="lg"
+                    className="w-full rounded-xl text-base h-12"
+                    disabled={!isValid}
+                  >
+                    Review & Start
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Confirm Practice Session</DialogTitle>
+                    <DialogDescription>
+                      Review your selected question distribution and time limit
+                      before starting.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="py-4 space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border/50">
+                      <div className="space-y-1">
+                        <p className="text-2xl font-semibold tracking-tight text-foreground">
+                          {totalQuestions}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                          Questions
+                        </p>
+                      </div>
+                      <div className="h-10 w-px bg-border"></div>
+                      <div className="space-y-1 text-right">
+                        <p className="text-2xl font-semibold tracking-tight text-foreground">
+                          {totalTimeMinutes}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                          Minutes
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      <h4 className="text-sm font-medium text-foreground mb-3">
+                        Question Distribution
+                      </h4>
+                      {activeSubjects.map((sub) => (
+                        <div
+                          key={sub.code}
+                          className="flex justify-between text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {sub.name}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {sub.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <DialogFooter className="mt-2 sm:justify-between">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsConfirmOpen(false)}
+                    >
+                      Edit Configuration
+                    </Button>
+                    <Button onClick={handleStart}>Start Practice</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardFooter>
           </Card>
+        </div>
+      </div>
+
+      {/* Mobile Fixed Bottom Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-md border-t border-border z-40 supports-backdrop-filter:bg-background/60">
+        <div className="flex items-center justify-between max-w-4xl mx-auto gap-4">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-foreground">
+              {totalQuestions} Qs{" "}
+              <span className="text-muted-foreground">•</span>{" "}
+              {totalTimeMinutes} min
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {activeSubjects.length} subject
+              {activeSubjects.length !== 1 && "s"}
+            </span>
+          </div>
+          <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+            <DialogTrigger>
+              <Button disabled={!isValid} className="rounded-xl px-6">
+                Review & Start
+              </Button>
+            </DialogTrigger>
+            {/* Reusing DialogContent from above via Portal/Dialog structure */}
+            <DialogContent className="sm:max-w-md w-[90vw] rounded-3xl">
+              <DialogHeader>
+                <DialogTitle>Confirm Practice Session</DialogTitle>
+                <DialogDescription>
+                  Review your question distribution and time limit.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-2 space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border/50">
+                  <div className="space-y-1">
+                    <p className="text-2xl font-semibold tracking-tight text-foreground">
+                      {totalQuestions}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                      Questions
+                    </p>
+                  </div>
+                  <div className="h-10 w-px bg-border"></div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-2xl font-semibold tracking-tight text-foreground">
+                      {totalTimeMinutes}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                      Minutes
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-sm font-medium text-foreground mb-2">
+                    Subject Breakdown
+                  </h4>
+                  {activeSubjects.map((sub) => (
+                    <div
+                      key={sub.code}
+                      className="flex justify-between text-sm"
+                    >
+                      <span className="text-muted-foreground">{sub.name}</span>
+                      <span className="font-medium tabular-nums">
+                        {sub.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <DialogFooter className="mt-2 flex-col gap-2 sm:justify-between sm:flex-row">
+                <Button className="w-full sm:w-auto" onClick={handleStart}>
+                  Start Practice
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full sm:w-auto"
+                  onClick={() => setIsConfirmOpen(false)}
+                >
+                  Go Back
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
