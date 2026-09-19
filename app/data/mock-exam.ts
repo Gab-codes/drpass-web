@@ -27,7 +27,8 @@ export const PRACTICE_LIMITS = {
   maxQuestionsPerSubject: 100,
   minTotalMinutes: 1,
   maxTotalMinutes: 180,
-  maxSubjects: 2,
+  /** A student may practice up to four of their enrolled subjects at once. */
+  maxSubjects: 4,
 } as const;
 
 export const QUESTION_PRESETS = [5, 10, 20, 40] as const;

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,12 @@ export function StepperInput({
   variant = "default",
 }: StepperInputProps) {
   const [raw, setRaw] = useState<string>(String(value));
+
+  // Follow the controlled value when it changes from the outside, e.g. when a
+  // suggested practice duration moves with the total question count.
+  useEffect(() => {
+    setRaw(String(value));
+  }, [value]);
 
   const clamp = (n: number) => Math.min(max, Math.max(min, n));
 
