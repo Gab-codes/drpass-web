@@ -12,8 +12,10 @@ export interface Question {
 }
 
 export interface ExamConfig {
-  subjects: string[];
-  questionsPerSubject: number;
+  subjects: Array<{
+    subjectCode: string;
+    questionCount: number;
+  }>;
   totalTimeMinutes: number;
   /** Route the student is returned to when leaving or finishing the exam. */
   exitPath: string;
@@ -22,10 +24,11 @@ export interface ExamConfig {
 // ─── Quick Practice configuration limits & presets ──────────────────────────
 export const PRACTICE_LIMITS = {
   minQuestionsPerSubject: 1,
-  maxQuestionsPerSubject: 100,
+  maxQuestionsPerSubject: 50,
   minTotalMinutes: 1,
   maxTotalMinutes: 180,
-  maxSubjects: 2,
+  /** A student may practice up to four of their enrolled subjects at once. */
+  maxSubjects: 4,
 } as const;
 
 export const QUESTION_PRESETS = [5, 10, 20, 40] as const;
@@ -111,10 +114,11 @@ export function getAvailableQuestionCount(subjectId: string): number {
 export function generateMockExam(config: ExamConfig): Question[] {
   const selectedQuestions: Question[] = [];
   
-  for (const subjectId of config.subjects) {
+  for (const subjectConfig of config.subjects) {
+    const subjectId = subjectConfig.subjectCode;
     const subjectQuestions = MOCK_QUESTIONS[subjectId] || [];
     // Just take the required number, pad with duplicates if necessary for testing UI
-    let toAdd = config.questionsPerSubject;
+    let toAdd = subjectConfig.questionCount;
     let i = 0;
     while (toAdd > 0 && subjectQuestions.length > 0) {
       selectedQuestions.push({

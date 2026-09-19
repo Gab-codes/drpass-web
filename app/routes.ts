@@ -21,6 +21,7 @@ export default [
 
   // Exam routes
   layout("layout/exam-layout.tsx", [
+    route("practice/prepare", "routes/practice/prepare.tsx"),
     route("practice/exam", "routes/practice/exam.tsx"),
   ]),
 
