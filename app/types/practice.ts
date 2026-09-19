@@ -37,3 +37,18 @@ export interface PracticeConfiguration {
   }>;
   totalTimeMinutes: number;
 }
+
+/**
+ * State passed from the setup route to the preparation route via React Router
+ * location state. Extends the API-ready configuration with display names so
+ * the preparation screen can show subjects without needing the full user record.
+ */
+export interface PracticeSessionStart {
+  subjects: Array<{
+    subjectCode: string;
+    questionCount: number;
+    /** Display name, e.g. "Use of English". Resolved from the student's subjects in setup. */
+    name: string;
+  }>;
+  totalTimeMinutes: number;
+}

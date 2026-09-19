@@ -24,7 +24,7 @@ export interface ExamConfig {
 // ─── Quick Practice configuration limits & presets ──────────────────────────
 export const PRACTICE_LIMITS = {
   minQuestionsPerSubject: 1,
-  maxQuestionsPerSubject: 100,
+  maxQuestionsPerSubject: 50,
   minTotalMinutes: 1,
   maxTotalMinutes: 180,
   /** A student may practice up to four of their enrolled subjects at once. */

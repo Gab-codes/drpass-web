@@ -1,10 +1,8 @@
 import { useNavigate } from "react-router";
 
 import { PracticeConfigurator } from "@/components/practice/setup/practice-configurator";
-import { generateMockExam, type ExamConfig } from "@/data/mock-exam";
 import { useUser } from "@/hooks/use-user";
-import { useExamStore } from "@/store/exam-store";
-import type { PracticeConfiguration } from "@/types/practice";
+import type { PracticeConfiguration, PracticeSessionStart } from "@/types/practice";
 
 /** Where the student is returned to when they leave or finish the exam. */
 const PRACTICE_EXIT_PATH = "/practice";
@@ -13,12 +11,12 @@ const PRACTICE_EXIT_PATH = "/practice";
  * Practice setup route.
  *
  * A thin orchestration layer: it renders the page header, hands the student's
- * subjects to `PracticeConfigurator`, and turns the finished configuration into
- * the mock exam session. All setup state and UI live in the setup components.
+ * subjects to `PracticeConfigurator`, and navigates to the preparation screen
+ * with the finalized configuration. All setup state and UI live in the setup
+ * components.
  */
 export default function PracticeSetup() {
   const navigate = useNavigate();
-  const setupExam = useExamStore((state) => state.setupExam);
   const { user } = useUser();
 
   // The authenticated/student layouts resolve the user before rendering this
@@ -26,15 +24,21 @@ export default function PracticeSetup() {
   if (!user) return null;
 
   const handleStart = (configuration: PracticeConfiguration) => {
-    // Local mock flow. When the Practice API exists this is where the
-    // configuration would be submitted instead of generating questions locally.
-    const examConfig: ExamConfig = {
-      ...configuration,
-      exitPath: PRACTICE_EXIT_PATH,
+    // Build the navigation state with display names resolved from the user's
+    // enrolled subjects. The preparation screen needs names for display but
+    // PracticeConfiguration only carries codes.
+    const state: PracticeSessionStart = {
+      totalTimeMinutes: configuration.totalTimeMinutes,
+      subjects: configuration.subjects.map((s) => ({
+        subjectCode: s.subjectCode,
+        questionCount: s.questionCount,
+        name:
+          user.subjects.find((us) => us.code === s.subjectCode)?.name ??
+          s.subjectCode,
+      })),
     };
 
-    setupExam(examConfig, generateMockExam(examConfig));
-    navigate("/practice/exam");
+    navigate("/practice/prepare", { state });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useExamStore } from "@/store/exam-store";
 import { useExamKeyboard } from "@/hooks/use-exam-keyboard";
@@ -8,6 +8,11 @@ import { ExamNavigator } from "@/components/exam/exam-navigator";
 import { ExamControls } from "@/components/exam/exam-controls";
 import { SubmitDialog } from "@/components/exam/submit-dialog";
 import { ExitDialog } from "@/components/exam/exit-dialog";
+import {
+  SubjectNav,
+  computeSubjectGroups,
+  getActiveGroupIndex,
+} from "@/components/exam/subject-nav";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -121,7 +126,6 @@ export default function ExamPage() {
     answers,
     timeRemaining,
     isSubmitDialogOpen,
-    startExam,
     setAnswer,
     nextQuestion,
     prevQuestion,
@@ -133,16 +137,28 @@ export default function ExamPage() {
     resetExam,
   } = useExamStore();
 
-  // Redirect to setup if no exam is configured
-  useEffect(() => {
-    if (questions.length === 0) {
-      navigate("/practice", { replace: true });
-    } else if (status === "idle") {
-      startExam();
-    }
-  }, [questions.length, status, startExam, navigate]);
+  // ── Subject groups — derived from the flat question list ─────────────────
+  const subjectGroups = useMemo(
+    () => computeSubjectGroups(questions),
+    [questions],
+  );
+  const activeGroupIndex = useMemo(
+    () => getActiveGroupIndex(subjectGroups, currentQuestionIndex),
+    [subjectGroups, currentQuestionIndex],
+  );
+  const activeSubjectName = subjectGroups[activeGroupIndex]?.name;
 
-  // Timer tick
+  // ── Guard: redirect if exam is not in progress ───────────────────────────
+  // The preparation screen calls setupExam() + startExam() before navigating
+  // here, so the store should already be "in-progress" on mount.
+  // "idle" means the student navigated directly (or refreshed the page).
+  useEffect(() => {
+    if (questions.length === 0 || status === "idle") {
+      navigate("/practice", { replace: true });
+    }
+  }, [questions.length, status, navigate]);
+
+  // ── Timer tick ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (status !== "in-progress") return;
     const interval = setInterval(() => {
@@ -151,14 +167,14 @@ export default function ExamPage() {
     return () => clearInterval(interval);
   }, [status, tickTime]);
 
-  // Detect timeout — set ref before the completed render
+  // ── Detect timeout — set ref before the completed render ─────────────────
   useEffect(() => {
     if (status === "completed" && timeRemaining === 0) {
       timedOutRef.current = true;
     }
   }, [status, timeRemaining]);
 
-  // Screen-reader threshold announcements — announce at key remaining times
+  // ── Screen-reader threshold announcements ────────────────────────────────
   useEffect(() => {
     if (status !== "in-progress") return;
     for (const threshold of ANNOUNCE_THRESHOLDS) {
@@ -186,7 +202,7 @@ export default function ExamPage() {
       if (!currentQuestion) return;
       setAnswer(currentQuestion.id, optionId);
     },
-    [currentQuestion, setAnswer]
+    [currentQuestion, setAnswer],
   );
 
   const handleExitRequest = () => setIsExitDialogOpen(true);
@@ -243,6 +259,7 @@ export default function ExamPage() {
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm">
+        {/* Main header row */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Brand mark */}
           <div className="flex items-center gap-2 shrink-0">
@@ -277,11 +294,21 @@ export default function ExamPage() {
             </span>
           </div>
 
-          {/* Progress — center, desktop only */}
+          {/* Subject + progress — center, desktop only */}
           <div
             className="text-xs text-muted-foreground text-center hidden sm:block"
-            aria-label={`Question ${currentQuestionIndex + 1} of ${questions.length}`}
+            aria-label={`${activeSubjectName ?? ""}, question ${currentQuestionIndex + 1} of ${questions.length}`}
           >
+            {activeSubjectName && (
+              <>
+                <span className="font-medium text-foreground">
+                  {activeSubjectName}
+                </span>
+                <span className="mx-1.5 text-border" aria-hidden="true">
+                  ·
+                </span>
+              </>
+            )}
             Question{" "}
             <span className="font-medium text-foreground tabular-nums">
               {currentQuestionIndex + 1}
@@ -302,8 +329,8 @@ export default function ExamPage() {
                 isCritical
                   ? "text-destructive"
                   : isUrgent
-                  ? "text-warning"
-                  : "text-foreground"
+                    ? "text-warning"
+                    : "text-foreground",
               )}
             >
               <svg
@@ -348,6 +375,15 @@ export default function ExamPage() {
           </div>
         </div>
 
+        {/* Subject navigation — rendered inside the sticky header so it scrolls with it */}
+        <SubjectNav
+          groups={subjectGroups}
+          activeGroupIndex={activeGroupIndex}
+          answers={answers}
+          questions={questions}
+          onNavigate={goToQuestion}
+        />
+
         {/* Keyboard shortcuts panel */}
         {showShortcuts && (
           <div
@@ -388,7 +424,12 @@ export default function ExamPage() {
         {/* Mobile: condensed progress row */}
         <div className="sm:hidden flex items-center justify-between text-sm text-muted-foreground mb-5">
           <span>
-            <span className="font-medium text-foreground">
+            {activeSubjectName && (
+              <span className="font-medium text-foreground mr-1.5">
+                {activeSubjectName}
+              </span>
+            )}
+            <span className="font-medium text-foreground tabular-nums">
               {currentQuestionIndex + 1}
             </span>
             {" / "}
@@ -400,8 +441,8 @@ export default function ExamPage() {
               isCritical
                 ? "text-destructive"
                 : isUrgent
-                ? "text-warning"
-                : "text-muted-foreground"
+                  ? "text-warning"
+                  : "text-muted-foreground",
             )}
             aria-hidden="true"
           >
