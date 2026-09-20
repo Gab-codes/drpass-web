@@ -1,4 +1,3 @@
-import { getMockQuestionAvailability } from "@/lib/practice-setup";
 import type { SubjectQuestionConfig } from "@/types/practice";
 import { SubjectQuestionRow } from "./subject-question-row";
 
@@ -20,12 +19,6 @@ export function SubjectQuestionSelector({
   const selectedCount = subjects.filter((subject) => subject.count > 0).length;
   const limitReached = selectedCount >= maxSelected;
   const hasUnselected = subjects.some((subject) => subject.count === 0);
-
-  // Local mock-bank note only; the Practice API will be authoritative.
-  const exceedsMockAvailability = subjects.filter((subject) => {
-    const available = getMockQuestionAvailability(subject.name);
-    return available !== null && subject.count > available;
-  });
 
   return (
     <section aria-labelledby="practice-subjects-heading" className="space-y-4">
@@ -60,14 +53,6 @@ export function SubjectQuestionSelector({
             />
           ))}
         </div>
-      )}
-
-      {exceedsMockAvailability.length > 0 && (
-        <p className="text-xs text-warning" role="status">
-          The local mock bank holds fewer questions for{" "}
-          {exceedsMockAvailability.map((subject) => subject.name).join(", ")}.
-          Extra slots are filled with repeated questions.
-        </p>
       )}
 
       {limitReached && hasUnselected && (
