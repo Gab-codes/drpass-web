@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Question } from "@/data/mock-exam";
+import type { PracticeQuestion } from "@/types/practice";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ export interface SubjectGroup {
  * `generateMockExam`. Questions must be ordered by subject (which they always
  * are — the generator preserves the config subjects order).
  */
-export function computeSubjectGroups(questions: Question[]): SubjectGroup[] {
+export function computeSubjectGroups(questions: PracticeQuestion[]): SubjectGroup[] {
   const groups: SubjectGroup[] = [];
 
   for (let i = 0; i < questions.length; i++) {
@@ -58,7 +58,7 @@ interface SubjectNavProps {
   /** Flat answers map used to compute per-subject progress. */
   answers: Record<string, string>;
   /** The full flat question list — needed to extract per-subject question ids. */
-  questions: Question[];
+  questions: PracticeQuestion[];
   /** Navigate to this flat question index when a subject tab is clicked. */
   onNavigate: (index: number) => void;
 }

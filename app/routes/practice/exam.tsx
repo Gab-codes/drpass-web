@@ -13,7 +13,6 @@ import {
   computeSubjectGroups,
   getActiveGroupIndex,
 } from "@/components/exam/subject-nav";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // ─── Timer display helpers ─────────────────────────────────────────────────
@@ -25,88 +24,6 @@ function formatTime(seconds: number): string {
 
 // Key thresholds (seconds) at which we announce remaining time to screen readers
 const ANNOUNCE_THRESHOLDS = [300, 120, 60, 30, 10];
-
-// ─── Completed / timeout screen ───────────────────────────────────────────
-function CompletedScreen({
-  timedOut,
-  onExit,
-}: {
-  timedOut: boolean;
-  onExit: () => void;
-}) {
-  const { questions, answers } = useExamStore();
-  const answered = Object.keys(answers).length;
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-svh gap-6 p-8 text-center">
-      <div className="max-w-sm space-y-5">
-        {timedOut ? (
-          <>
-            <div
-              className="mx-auto w-14 h-14 rounded-full bg-warning/10 flex items-center justify-center"
-              aria-hidden="true"
-            >
-              <svg
-                className="w-7 h-7 text-warning"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-heading font-semibold tracking-tight text-foreground">
-              Time expired
-            </h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Your practice session was automatically submitted when the time
-              ran out.
-            </p>
-          </>
-        ) : (
-          <>
-            <div
-              className="mx-auto w-14 h-14 rounded-full bg-accent flex items-center justify-center"
-              aria-hidden="true"
-            >
-              <svg
-                className="w-7 h-7 text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-heading font-semibold tracking-tight text-foreground">
-              Practice submitted
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Your session has been recorded.
-            </p>
-          </>
-        )}
-        <p className="text-sm text-muted-foreground">
-          You answered{" "}
-          <strong className="text-foreground font-medium">
-            {answered} of {questions.length}
-          </strong>{" "}
-          questions.
-        </p>
-        <Button onClick={onExit} size="lg" className="mt-2 rounded-full">
-          Back to Practice
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main exam page ────────────────────────────────────────────────────────
 export default function ExamPage() {
@@ -227,11 +144,18 @@ export default function ExamPage() {
     options: currentQuestion?.options ?? [],
   });
 
-  // ── Completed state ──────────────────────────────────────────────────────
+  // ── Redirect to results when completed ──────────────────────────────────
+  useEffect(() => {
+    if (status === "completed") {
+      navigate("/practice/results", {
+        replace: true,
+        state: { timedOut: timedOutRef.current },
+      });
+    }
+  }, [status, navigate]);
+
   if (status === "completed") {
-    return (
-      <CompletedScreen timedOut={timedOutRef.current} onExit={handleExitConfirm} />
-    );
+    return null;
   }
 
   if (!currentQuestion || status === "idle") {

@@ -1,10 +1,10 @@
-import type { Option } from "@/data/mock-exam";
+import type { PracticeOption } from "@/types/practice";
 import { cn } from "@/lib/utils";
 
 const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 
 interface AnswerOptionsProps {
-  options: Option[];
+  options: PracticeOption[];
   selectedOptionId: string | undefined;
   onSelect: (optionId: string) => void;
 }

@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
-import type { Question } from "@/data/mock-exam";
+import type { PracticeQuestion } from "@/types/practice";
 
 interface ExamNavigatorProps {
-  questions: Question[];
+  questions: PracticeQuestion[];
   currentIndex: number;
   answers: Record<string, string>;
   onNavigate: (index: number) => void;

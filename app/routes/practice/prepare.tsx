@@ -9,7 +9,7 @@ import {
 
 import { preparePracticeQuestions, practiceKeys } from "@/api/practice";
 import { Button } from "@/components/ui/button";
-import { type ExamConfig, type Question } from "@/data/mock-exam";
+import { type ExamConfig } from "@/data/mock-exam";
 import { useExamStore } from "@/store/exam-store";
 import type {
   PracticeConfiguration,
@@ -114,10 +114,7 @@ export default function PracticePreparePage() {
       exitPath: PRACTICE_EXIT_PATH,
     };
 
-    // The exact API-returned set is what the exam will use. The exam page
-    // never re-requests — it consumes the store populated on Start.
-    // The wire DTO only widens the option `label` union to `string`.
-    setupExam(examConfig, questions as unknown as Question[]);
+    setupExam(examConfig, questions!);
     startExam();
     navigate("/practice/exam", { replace: true });
   };
