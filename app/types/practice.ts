@@ -52,3 +52,42 @@ export interface PracticeSessionStart {
   }>;
   totalTimeMinutes: number;
 }
+
+// ─── Practice API contract ──────────────────────────────────────────────────
+
+/** One option of an API-returned practice question. */
+export interface PracticeOption {
+  id: string;
+  /** Option identifier, e.g. "A", "B", "C", "D". */
+  label: string;
+  text: string;
+}
+
+/**
+ * Minimal student-facing question representation returned by the Practice API.
+ * Deliberately excludes answers, explanations, classification and audit data.
+ */
+export interface PracticeQuestion {
+  id: string;
+  subjectCode: string;
+  /** Display subject name (e.g. "Use of English"). */
+  subject: string;
+  text: string;
+  options: PracticeOption[];
+}
+
+/** Response of POST /api/v1/practice/questions. */
+export interface PreparePracticeResponse {
+  questions: PracticeQuestion[];
+}
+
+/**
+ * Future-ready filters for the Practice API. The initial frontend sends none;
+ * the type exists so adding filters later requires no endpoint redesign.
+ */
+export interface PracticeFilters {
+  hasTopic?: boolean;
+  source?: "JAMB" | "WAEC" | "NECO" | "GCE" | "AI_GENERATED";
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  excludeSeen?: boolean;
+}
