@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import { generateMockExam, type ExamConfig, type Question } from "@/data/mock-exam";
+import { type ExamConfig, type Question } from "@/data/mock-exam";
+import {
+  PracticePrepareError,
+  preparePracticeQuestions,
+} from "@/lib/practice-api";
 import { useExamStore } from "@/store/exam-store";
 import type { PracticeSessionStart } from "@/types/practice";
 
@@ -39,8 +43,10 @@ export default function PracticePreparePage() {
   const startExam = useExamStore((s) => s.startExam);
 
   const [prepState, setPrepState] = useState<PrepState>("preparing");
+  // Incremented by "Retry" to re-run the preparation request.
+  const [attempt, setAttempt] = useState(0);
 
-  // Holds the generated questions — populated once preparation completes.
+  // Holds the prepared questions — populated once preparation completes.
   const questionsRef = useRef<Question[]>([]);
 
   // Guard: no session state means the student navigated here directly.
@@ -52,26 +58,29 @@ export default function PracticePreparePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Prepare questions ──────────────────────────────────────────────────────
+  // ── Prepare questions (real API) ───────────────────────────────────────────
   useEffect(() => {
     if (!sessionStart) return;
 
     let cancelled = false;
+    const controller = new AbortController();
 
     async function prepare() {
+      setPrepState("preparing");
       try {
-        // Build the exam config shape that generateMockExam / future API expects.
-        const examConfig: ExamConfig = {
-          subjects: sessionStart!.subjects.map((s) => ({
-            subjectCode: s.subjectCode,
-            questionCount: s.questionCount,
-          })),
-          totalTimeMinutes: sessionStart!.totalTimeMinutes,
-          exitPath: PRACTICE_EXIT_PATH,
-        };
-
-        // ── FUTURE API BOUNDARY ─────────────────────────────────────────────
-        const questions = generateMockExam(examConfig);
+        // ── API BOUNDARY ────────────────────────────────────────────────────
+        // No filters are sent yet — the Practice UI does not expose them.
+        const questions = await preparePracticeQuestions(
+          {
+            subjects: sessionStart!.subjects.map((s) => ({
+              subjectCode: s.subjectCode,
+              questionCount: s.questionCount,
+            })),
+            totalTimeMinutes: sessionStart!.totalTimeMinutes,
+          },
+          undefined,
+          controller.signal,
+        );
         // ────────────────────────────────────────────────────────────────────
 
         if (cancelled) return;
@@ -81,24 +90,28 @@ export default function PracticePreparePage() {
           return;
         }
 
+        // The exact API-returned set is what the exam will use. The exam page
+        // never re-requests — it consumes the store populated on Start.
         questionsRef.current = questions;
         setPrepState("ready");
-      } catch {
-        if (!cancelled) setPrepState("error");
+      } catch (error) {
+        if (cancelled || controller.signal.aborted) return;
+        if (error instanceof PracticePrepareError && error.code === "network") {
+          console.warn("Practice preparation network error:", error.message);
+        }
+        setPrepState("error");
       }
     }
 
-    // Artificial tiny delay so the "Preparing" state is at least visible, 
-    // ensuring it doesn't flash uncomfortably fast during client-side generation.
-    const timer = setTimeout(prepare, 800);
+    void prepare();
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      controller.abort();
     };
-    // Intentionally empty deps — question generation runs exactly once.
+    // Re-runs only when the student hits Retry (attempt changes).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
 
   // ── Early return — guard rendered after guards run ─────────────────────────
   if (!sessionStart) return null;
@@ -227,7 +240,7 @@ export default function PracticePreparePage() {
         <div className="flex flex-col gap-3 pt-4">
           {isError ? (
             <>
-              <Button size="lg" onClick={() => window.location.reload()}>
+              <Button size="lg" onClick={() => setAttempt((n) => n + 1)}>
                 Retry
               </Button>
               <Button variant="ghost" size="lg" onClick={handleGoBack}>
