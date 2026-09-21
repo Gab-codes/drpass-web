@@ -21,6 +21,25 @@ export interface PracticeScoreSummary {
   subjects: SubjectScore[];
 }
 
+// ─── Answer status helpers ────────────────────────────────────────────────────
+
+export type AnswerStatus = "correct" | "incorrect" | "unanswered";
+
+/**
+ * Single source of truth for determining whether a question was answered
+ * correctly, incorrectly, or left unanswered.
+ *
+ * Uses the API-provided `correctOptionId` as the source of truth.
+ */
+export function getAnswerStatus(
+  question: PracticeQuestion,
+  answers: Record<string, string>,
+): AnswerStatus {
+  const selected = answers[question.id];
+  if (!selected) return "unanswered";
+  return selected === question.correctOptionId ? "correct" : "incorrect";
+}
+
 /**
  * Pure, stateless calculation of a completed Practice session result.
  *
