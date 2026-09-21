@@ -6,7 +6,7 @@ import { apiClient } from "@/lib/axios";
 import {
   PracticePrepareError,
   preparePracticeQuestions,
-} from "@/lib/practice-api";
+} from "@/api/practice";
 
 vi.mock("@/lib/axios", () => ({
   apiClient: { post: vi.fn() },
@@ -50,7 +50,7 @@ describe("preparePracticeQuestions", () => {
     await preparePracticeQuestions(config);
 
     expect(postMock).toHaveBeenCalledWith(
-      "/api/v1/practice/questions",
+      "/practice/questions",
       {
         subjects: config.subjects,
         totalTimeMinutes: config.totalTimeMinutes,
@@ -65,7 +65,7 @@ describe("preparePracticeQuestions", () => {
     await preparePracticeQuestions(config, { hasTopic: true, source: "JAMB" });
 
     expect(postMock).toHaveBeenCalledWith(
-      "/api/v1/practice/questions",
+      "/practice/questions",
       {
         subjects: config.subjects,
         totalTimeMinutes: config.totalTimeMinutes,

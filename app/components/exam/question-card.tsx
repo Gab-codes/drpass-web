@@ -1,7 +1,7 @@
-import type { Question } from "@/data/mock-exam";
+import type { PracticeQuestion } from "@/types/practice";
 
 interface QuestionCardProps {
-  question: Question;
+  question: PracticeQuestion;
   questionNumber: number;
   totalQuestions: number;
 }

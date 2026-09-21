@@ -1,19 +1,20 @@
 import { create } from "zustand";
-import type { ExamConfig, Question } from "@/data/mock-exam";
+import type { ExamConfig } from "@/data/mock-exam";
+import type { PracticeQuestion } from "@/types/practice";
 
 export type ExamStatus = "idle" | "in-progress" | "submitting" | "completed";
 
 interface ExamState {
   status: ExamStatus;
   config: ExamConfig | null;
-  questions: Question[];
+  questions: PracticeQuestion[];
   currentQuestionIndex: number;
   answers: Record<string, string>; // questionId -> optionId
   timeRemaining: number; // in seconds
   isSubmitDialogOpen: boolean;
 
   // Actions
-  setupExam: (config: ExamConfig, questions: Question[]) => void;
+  setupExam: (config: ExamConfig, questions: PracticeQuestion[]) => void;
   startExam: () => void;
   setAnswer: (questionId: string, optionId: string) => void;
   nextQuestion: () => void;

@@ -65,7 +65,7 @@ export interface PracticeOption {
 
 /**
  * Minimal student-facing question representation returned by the Practice API.
- * Deliberately excludes answers, explanations, classification and audit data.
+ * Only includes data necessary for the Practice session and Review flow.
  */
 export interface PracticeQuestion {
   id: string;
@@ -74,6 +74,7 @@ export interface PracticeQuestion {
   subject: string;
   text: string;
   options: PracticeOption[];
+  correctOptionId: string;
 }
 
 /** Response of POST /api/v1/practice/questions. */

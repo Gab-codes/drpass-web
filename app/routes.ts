@@ -17,12 +17,12 @@ export default [
       route("syllabus", "routes/user/syllabus.tsx"),
       route("practice", "routes/user/practice/setup.tsx"),
     ]),
-  ]),
-
-  // Exam routes
-  layout("layout/exam-layout.tsx", [
-    route("practice/prepare", "routes/practice/prepare.tsx"),
-    route("practice/exam", "routes/practice/exam.tsx"),
+    // Exam routes
+    layout("layout/exam-layout.tsx", [
+      route("practice/prepare", "routes/practice/prepare.tsx"),
+      route("practice/exam", "routes/practice/exam.tsx"),
+      route("practice/results", "routes/practice/results.tsx"),
+    ]),
   ]),
 
   //Admin routes
@@ -31,10 +31,22 @@ export default [
     route("admin/subjects", "routes/admin/subjects.tsx"),
     route("admin/questions", "routes/admin/questions/index.tsx"),
     route("admin/questions/:subject", "routes/admin/questions/subject.tsx"),
-    route("admin/questions/classification", "routes/admin/questions/classification/index.tsx"),
-    route("admin/questions/classification/history", "routes/admin/questions/classification/history.tsx"),
-    route("admin/questions/classification/history/:subject", "routes/admin/questions/classification/history-subject.tsx"),
-    route("admin/questions/classification/:jobId", "routes/admin/questions/classification/job.tsx"),
+    route(
+      "admin/questions/classification",
+      "routes/admin/questions/classification/index.tsx",
+    ),
+    route(
+      "admin/questions/classification/history",
+      "routes/admin/questions/classification/history.tsx",
+    ),
+    route(
+      "admin/questions/classification/history/:subject",
+      "routes/admin/questions/classification/history-subject.tsx",
+    ),
+    route(
+      "admin/questions/classification/:jobId",
+      "routes/admin/questions/classification/job.tsx",
+    ),
     route("admin/question-sets", "routes/admin/question-sets.tsx"),
     route("admin/imports", "routes/admin/imports/index.tsx"),
     route("admin/imports/:importId", "routes/admin/imports/show.tsx"),

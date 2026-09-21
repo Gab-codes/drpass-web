@@ -1,4 +1,4 @@
-import { PRACTICE_LIMITS, getAvailableQuestionCount } from "@/data/mock-exam";
+import { PRACTICE_LIMITS } from "@/data/mock-exam";
 import type { ApiSubject } from "@/types/onboarding";
 import type {
   PracticeConfiguration,
@@ -9,29 +9,6 @@ import type {
 
 /** Question count a subject starts with, and returns to when reselected. */
 export const DEFAULT_QUESTIONS_PER_SUBJECT = 10;
-
-/**
- * The local mock question bank is keyed by its own ids, not by the canonical
- * subject codes student subjects use. Only the subjects below exist in it;
- * everything else has no local availability information.
- */
-const MOCK_BANK_KEY_BY_SUBJECT_NAME: Record<string, string> = {
-  english: "english",
-  "use of english": "english",
-  maths: "maths",
-  mathematics: "maths",
-  physics: "physics",
-};
-
-/**
- * How many questions the local mock bank holds for a subject, or `null` when it
- * holds none. The Practice API will be authoritative for availability later.
- */
-export function getMockQuestionAvailability(subjectName: string): number | null {
-  const key = MOCK_BANK_KEY_BY_SUBJECT_NAME[subjectName.trim().toLowerCase()];
-  if (!key) return null;
-  return getAvailableQuestionCount(key);
-}
 
 /**
  * Initial per-subject configuration. The subject limit is respected up front so
