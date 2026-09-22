@@ -16,12 +16,15 @@ export default [
       route("dashboard", "routes/user/dashboard.tsx"),
       route("syllabus", "routes/user/syllabus.tsx"),
       route("practice", "routes/user/practice/setup.tsx"),
+      route("mock-exam", "routes/mock-exam/index.tsx"),
     ]),
     // Exam routes
     layout("layout/exam-layout.tsx", [
       route("practice/prepare", "routes/practice/prepare.tsx"),
       route("practice/exam", "routes/practice/exam.tsx"),
       route("practice/results", "routes/practice/results.tsx"),
+      route("mock-exam/prepare", "routes/mock-exam/prepare.tsx"),
+      route("mock-exam/exam", "routes/mock-exam/exam.tsx"),
     ]),
   ]),
 

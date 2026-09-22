@@ -17,6 +17,12 @@ export interface ExamConfig {
     questionCount: number;
   }>;
   totalTimeMinutes: number;
+  /**
+   * Which examination flow this session belongs to. Enables future Mock
+   * Exam–specific behavior (results, attempt history) without changing the
+   * shared exam machinery. Practice sessions default to "practice".
+   */
+  mode?: "practice" | "mock";
   /** Route the student is returned to when leaving or finishing the exam. */
   exitPath: string;
 }

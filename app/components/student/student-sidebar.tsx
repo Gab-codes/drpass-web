@@ -8,6 +8,7 @@ import {
   Mortarboard01Icon,
   PencilEdit02Icon,
   BookOpen01Icon,
+  NoteIcon,
 } from "@hugeicons/core-free-icons";
 
 import {
@@ -63,6 +64,12 @@ const navItems: NavItem[] = [
     title: "Quick Practice",
     url: "/practice",
     icon: PencilEdit02Icon,
+    end: true,
+  },
+  {
+    title: "Mock Exam",
+    url: "/mock-exam",
+    icon: NoteIcon,
     end: true,
   },
 ];
