@@ -12,6 +12,12 @@ interface ExamState {
   answers: Record<string, string>; // questionId -> optionId
   timeRemaining: number; // in seconds
   isSubmitDialogOpen: boolean;
+  /**
+   * Wall-clock timestamps used by attempt history (Mock Exam persistence).
+   * Null until the exam actually starts / completes; unused by Practice.
+   */
+  startedAt: string | null;
+  completedAt: string | null;
 
   // Actions
   setupExam: (config: ExamConfig, questions: PracticeQuestion[]) => void;
@@ -35,6 +41,8 @@ export const useExamStore = create<ExamState>((set, get) => ({
   answers: {},
   timeRemaining: 0,
   isSubmitDialogOpen: false,
+  startedAt: null,
+  completedAt: null,
 
   setupExam: (config, questions) =>
     set({
@@ -45,9 +53,12 @@ export const useExamStore = create<ExamState>((set, get) => ({
       answers: {},
       timeRemaining: config.totalTimeMinutes * 60,
       isSubmitDialogOpen: false,
+      startedAt: null,
+      completedAt: null,
     }),
 
-  startExam: () => set({ status: "in-progress" }),
+  startExam: () =>
+    set({ status: "in-progress", startedAt: new Date().toISOString() }),
 
   setAnswer: (questionId, optionId) =>
     set((state) => ({
@@ -87,7 +98,12 @@ export const useExamStore = create<ExamState>((set, get) => ({
       
       const newTime = Math.max(0, state.timeRemaining - 1);
       if (newTime === 0) {
-        return { timeRemaining: 0, status: "completed", isSubmitDialogOpen: false };
+        return {
+          timeRemaining: 0,
+          status: "completed",
+          isSubmitDialogOpen: false,
+          completedAt: new Date().toISOString(),
+        };
       }
       return { timeRemaining: newTime };
     }),
@@ -96,7 +112,12 @@ export const useExamStore = create<ExamState>((set, get) => ({
 
   closeSubmitDialog: () => set({ isSubmitDialogOpen: false }),
 
-  submitExam: () => set({ status: "completed", isSubmitDialogOpen: false }),
+  submitExam: () =>
+    set({
+      status: "completed",
+      isSubmitDialogOpen: false,
+      completedAt: new Date().toISOString(),
+    }),
 
   resetExam: () =>
     set({
@@ -107,5 +128,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
       answers: {},
       timeRemaining: 0,
       isSubmitDialogOpen: false,
+      startedAt: null,
+      completedAt: null,
     }),
 }));

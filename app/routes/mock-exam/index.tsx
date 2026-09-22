@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 
 import { MockExamOverview } from "@/components/mock-exam/mock-exam-overview";
+import { MockExamRecentAttempts } from "@/components/mock-exam/mock-exam-recent-attempts";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
 import {
@@ -21,8 +22,9 @@ const DASHBOARD_PATH = "/dashboard";
  *
  * Informational/confirmation entry point: shows the fixed JAMB UTME format,
  * the student's actual subjects and allocation, and the duration. Performs
- * no requests — the 180-question preparation begins only on the prepare
- * screen, after the student explicitly continues.
+ * no exam-side requests — the only fetch is the lightweight attempt-history
+ * summary; the 180-question preparation begins only on the prepare screen,
+ * after the student explicitly continues.
  *
  * The allocation comes from the shared `buildMockExamAllocation()` domain
  * rule, so this screen and the prepare screen can never disagree about the
@@ -74,6 +76,8 @@ export default function MockExamOverviewPage() {
             Back to Dashboard
           </Button>
         </div>
+
+        <MockExamRecentAttempts />
       </div>
     );
   }
@@ -93,6 +97,7 @@ export default function MockExamOverviewPage() {
         onStart={handleStart}
         onBack={handleBack}
       />
+      <MockExamRecentAttempts />
     </div>
   );
 }

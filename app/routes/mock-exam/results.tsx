@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useExamStore } from "@/store/exam-store";
 import { ResultsSummary } from "@/components/practice/results/results-summary";
 import { ReviewView } from "@/components/practice/results/review-view";
+import { MockExamAttemptPersistence } from "@/components/mock-exam/mock-exam-attempt-persistence";
 
 /**
  * Mock Exam Results route.
@@ -11,6 +12,11 @@ import { ReviewView } from "@/components/practice/results/review-view";
  * Thin orchestrator, mirroring the Practice results route: reads the
  * completed session from the shared exam store and renders the shared
  * results views in `"mock"` variant (which adds the JAMB-style score).
+ *
+ * Also mounts the attempt persistence component: once the result is known,
+ * the completed attempt is saved as durable history (idempotent, with an
+ * explicit retryable notice if the save fails). Practice results do not
+ * mount it, so Practice behavior is unchanged.
  */
 export default function MockExamResultsPage() {
   const navigate = useNavigate();
@@ -39,11 +45,14 @@ export default function MockExamResultsPage() {
   }
 
   return (
-    <ResultsSummary
-      variant="mock"
-      timedOut={timedOut}
-      onReview={() => setView("review")}
-      onExit={handleExit}
-    />
+    <>
+      <MockExamAttemptPersistence />
+      <ResultsSummary
+        variant="mock"
+        timedOut={timedOut}
+        onReview={() => setView("review")}
+        onExit={handleExit}
+      />
+    </>
   );
 }
