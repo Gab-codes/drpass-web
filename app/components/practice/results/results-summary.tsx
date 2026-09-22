@@ -4,7 +4,9 @@ import { Alert02Icon, ArrowLeft01Icon, ViewIcon, BookOpen01Icon } from "@hugeico
 
 import { useExamStore } from "@/store/exam-store";
 import { calculatePracticeResults } from "@/lib/practice-results";
+import { calculateMockExamScore } from "@/lib/mock-exam-score";
 import { Button } from "@/components/ui/button";
+import { MockExamScoreCard } from "@/components/mock-exam/mock-exam-score-card";
 import { ScoreRing } from "./score-ring";
 import { ResultStats } from "./result-stats";
 import { SubjectBreakdown } from "./subject-breakdown";
@@ -13,22 +15,41 @@ import { SubjectBreakdown } from "./subject-breakdown";
  * Results summary view: score ring, stat strip, subject breakdown and actions.
  * Reads the exam session snapshot from the exam store, matching the
  * convention used by other exam feature components (e.g. SubmitDialog).
+ *
+ * The optional `"mock"` variant adds the JAMB-style /400 score (and per-subject
+ * scores) for a completed Mock Exam session; the default Practice rendering is
+ * unchanged.
  */
 export function ResultsSummary({
   timedOut,
   onReview,
   onExit,
+  variant = "practice",
 }: {
   timedOut: boolean;
   onReview: () => void;
   onExit: () => void;
+  /** `"mock"` renders the JAMB-style score for a Mock Exam session. */
+  variant?: "practice" | "mock";
 }) {
-  const { questions, answers } = useExamStore();
+  const { questions, answers, config } = useExamStore();
 
   const summary = useMemo(
     () => calculatePracticeResults(questions, answers),
     [questions, answers],
   );
+
+  // Mock-only: computed once from the same session snapshot — no duplicate
+  // score state, no additional requests. `null` for Practice sessions.
+  const mockScore = useMemo(
+    () =>
+      variant === "mock"
+        ? calculateMockExamScore(questions, answers, config)
+        : null,
+    [variant, questions, answers, config],
+  );
+
+  const isMock = variant === "mock";
 
   return (
     <div className="flex flex-col min-h-svh">
@@ -39,14 +60,18 @@ export function ResultsSummary({
             type="button"
             onClick={onExit}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-            aria-label="Return to Practice"
+            aria-label={
+              isMock
+                ? "Return to Mock Exam overview"
+                : "Return to Practice"
+            }
           >
             <HugeiconsIcon
               icon={ArrowLeft01Icon}
               className="size-4"
               aria-hidden="true"
             />
-            Practice
+            {isMock ? "Mock Exam" : "Practice"}
           </button>
           <span className="text-sm font-medium text-foreground">Results</span>
           <div className="w-16" aria-hidden="true" />
@@ -99,9 +124,21 @@ export function ResultsSummary({
           </div>
         </section>
 
+        {/* Mock Exam: the JAMB-style /400 score alongside the raw performance. */}
+        {mockScore && <MockExamScoreCard score={mockScore} />}
+
         <ResultStats summary={summary} />
 
-        <SubjectBreakdown subjects={summary.subjects} />
+        <SubjectBreakdown
+          subjects={summary.subjects}
+          scoresBySubject={
+            mockScore
+              ? Object.fromEntries(
+                  mockScore.subjects.map((s) => [s.subjectCode, s.score]),
+                )
+              : undefined
+          }
+        />
 
         {/* Actions */}
         <div className="flex flex-col gap-3 pt-2">
@@ -124,7 +161,7 @@ export function ResultsSummary({
               className="size-4 mr-2"
               aria-hidden="true"
             />
-            Back to Practice
+            Back to {isMock ? "Mock Exam" : "Practice"}
           </Button>
         </div>
       </main>

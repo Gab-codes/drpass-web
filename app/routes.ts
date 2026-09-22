@@ -25,6 +25,7 @@ export default [
       route("practice/results", "routes/practice/results.tsx"),
       route("mock-exam/prepare", "routes/mock-exam/prepare.tsx"),
       route("mock-exam/exam", "routes/mock-exam/exam.tsx"),
+      route("mock-exam/results", "routes/mock-exam/results.tsx"),
     ]),
   ]),
 

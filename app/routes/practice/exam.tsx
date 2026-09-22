@@ -145,14 +145,19 @@ export default function ExamPage() {
   });
 
   // ── Redirect to results when completed ──────────────────────────────────
+  // The results destination follows the session mode: Mock Exam has its own
+  // results experience (JAMB-style score); Practice is unchanged.
   useEffect(() => {
     if (status === "completed") {
-      navigate("/practice/results", {
-        replace: true,
-        state: { timedOut: timedOutRef.current },
-      });
+      navigate(
+        config?.mode === "mock" ? "/mock-exam/results" : "/practice/results",
+        {
+          replace: true,
+          state: { timedOut: timedOutRef.current },
+        },
+      );
     }
-  }, [status, navigate]);
+  }, [status, config, navigate]);
 
   if (status === "completed") {
     return null;
