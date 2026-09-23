@@ -17,7 +17,7 @@ export function SyllabusEmptyNoSubjects() {
         We don't know which subjects you are preparing for yet. Update your subject combination to view your syllabus.
       </p>
       <div className="mt-4">
-        <Link to="/dashboard/settings/subjects" className={cn(buttonVariants())}>
+        <Link to="/settings" className={cn(buttonVariants())}>
           Update Subjects
         </Link>
       </div>

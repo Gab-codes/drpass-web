@@ -17,6 +17,7 @@ export default [
       route("syllabus", "routes/user/syllabus.tsx"),
       route("practice", "routes/user/practice/setup.tsx"),
       route("mock-exam", "routes/mock-exam/index.tsx"),
+      route("settings", "routes/user/settings.tsx"),
     ]),
     // Exam routes
     layout("layout/exam-layout.tsx", [

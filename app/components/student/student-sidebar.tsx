@@ -9,6 +9,7 @@ import {
   PencilEdit02Icon,
   BookOpen01Icon,
   NoteIcon,
+  Settings01Icon,
 } from "@hugeicons/core-free-icons";
 
 import {
@@ -70,6 +71,12 @@ const navItems: NavItem[] = [
     title: "Mock Exam",
     url: "/mock-exam",
     icon: NoteIcon,
+    end: true,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings01Icon,
     end: true,
   },
 ];
